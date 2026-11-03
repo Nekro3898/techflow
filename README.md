@@ -1,4 +1,4 @@
-Cosass importantes que debe tener el sistema.
+Cosas importantes que debe tener el sistema.
 
 1) POO programacion orientada a objetos. definir una clase y dejar las funciones alli.
 2) MVC Modelo vista controlador. Diversificar los archivos y separarlos en sus correspondientes funcionalidades de acuerdo Modelo, Vista o controlador.
