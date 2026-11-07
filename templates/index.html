@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TechFlow - Gestion</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+</head>
+<body>
+    <header class="top">
+        <div class="brand">
+            <strong>TECHFLOW</strong>
+            <span>Gestion de tienda</span>
+        </div>
+        <div id="estado" class="pill">Comprobando...</div>
+    </header>
+
+    <main class="layout">
+        <nav class="nav" aria-label="Secciones">
+            <button class="navbtn active" data-tab="resumen">Resumen</button>
+            <button class="navbtn" data-tab="puntoVenta">Punto de venta</button>
+            <button class="navbtn" data-tab="productos">Productos</button>
+            <button class="navbtn" data-tab="inventario">Inventario</button>
+            <button class="navbtn" data-tab="ventas">Ventas</button>
+            <button class="navbtn" data-tab="caja">Caja</button>
+            <button class="navbtn" data-tab="estadisticas">Estadisticas</button>
+        </nav>
+
+        <section id="resumen" class="tab active">
+            <div class="hero">
+                <div>
+                    <p class="eyebrow">Panel principal</p>
+                    <h1>Todo en un solo lugar.</h1>
+                    <p>Productos, stock, ventas y caja conectados con la base de datos.</p>
+                </div>
+                <button class="primary" onclick="cargarTodo()">Actualizar</button>
+            </div>
+            <div class="cards" id="cards"></div>
+            <div class="panel">
+                <h2>Ultimas ventas</h2>
+                <div id="ultimas"></div>
+            </div>
+        </section>
+
+        <section id="puntoVenta" class="tab">
+            <div class="sectionhead">
+                <div>
+                    <p class="eyebrow">Cobros</p>
+                    <h2>Punto de venta</h2>
+                </div>
+                <div id="posCaja" class="statusbox"></div>
+            </div>
+
+            <div class="pos-grid">
+                <div class="panel">
+                    <div class="sectiontitle">
+                        <div>
+                            <h3>Agregar productos</h3>
+                            <p class="muted">Busca una variante, indica la cantidad y agregala al carrito.</p>
+                        </div>
+                    </div>
+
+                    <div class="pos-search">
+                        <label>
+                            Buscar producto
+                            <input
+                                class="field"
+                                id="posBusqueda"
+                                type="search"
+                                placeholder="Nombre, codigo, talle o color"
+                                oninput="filtrarProductosPOS()"
+                            >
+                        </label>
+                    </div>
+
+                    <div class="formgrid pos-form">
+                        <label>
+                            Producto / variante
+                            <select class="field" id="posProducto"></select>
+                        </label>
+                        <label>
+                            Cantidad
+                            <input class="field" id="posCantidad" type="number" min="1" value="1">
+                        </label>
+                    </div>
+
+                    <button class="primary" onclick="agregarAlCarrito()">
+                        Agregar al carrito
+                    </button>
+
+                    <div id="posCarrito" class="cart"></div>
+                </div>
+
+                <div class="panel pos-checkout">
+                    <div class="sectiontitle">
+                        <div>
+                            <h3>Confirmar cobro</h3>
+                            <p class="muted">El servidor vuelve a validar stock y montos antes de guardar.</p>
+                        </div>
+                    </div>
+
+                    <div id="posResumen" class="checkout-summary"></div>
+
+                    <div class="payment-box">
+                        <div class="payment-head">
+                            <h3>Medios de pago</h3>
+                            <button class="linkbtn" onclick="agregarPago()">
+                                + Agregar medio
+                            </button>
+                        </div>
+
+                        <div id="posPagos"></div>
+
+                        <div class="cash-box hidden" id="posEfectivoBox">
+                            <label>
+                                Efectivo recibido
+                                <input
+                                    class="field"
+                                    id="posEfectivoRecibido"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    oninput="renderPos()"
+                                >
+                            </label>
+                            <div id="posCambio" class="change"></div>
+                        </div>
+                    </div>
+
+                    <div class="checkout-actions">
+                        <button onclick="vaciarCarrito()">Vaciar</button>
+                        <button
+                            class="primary"
+                            id="btnConfirmarVenta"
+                            onclick="confirmarCobro()"
+                        >
+                            Confirmar cobro
+                        </button>
+                    </div>
+
+                    <div id="posResultado"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="productos" class="tab">
+            <div class="sectionhead">
+                <div>
+                    <p class="eyebrow">Catalogo</p>
+                    <h2>Productos</h2>
+                </div>
+                <button class="primary" onclick="mostrarProducto()">Nuevo producto</button>
+            </div>
+            <div class="toolbar">
+                <input
+                    id="busqueda"
+                    placeholder="Buscar por nombre o descripcion"
+                    oninput="cargarProductos()"
+                >
+                <label>
+                    <input id="inactivos" type="checkbox" onchange="cargarProductos()">
+                    incluir inactivos
+                </label>
+            </div>
+            <div class="panel" id="tablaProductos"></div>
+            <div class="panel hidden" id="formProducto"></div>
+        </section>
+
+        <section id="inventario" class="tab">
+            <div class="sectionhead">
+                <div>
+                    <p class="eyebrow">Existencias</p>
+                    <h2>Inventario</h2>
+                </div>
+                <button class="primary" onclick="mostrarMovimiento()">Registrar movimiento</button>
+            </div>
+            <div class="toolbar">
+                <input
+                    id="busqStock"
+                    placeholder="Buscar variante"
+                    oninput="cargarInventario()"
+                >
+                <label>
+                    <input id="soloBajo" type="checkbox" onchange="cargarInventario()">
+                    solo bajo minimo
+                </label>
+            </div>
+            <div class="panel" id="tablaInventario"></div>
+            <div class="panel hidden" id="formMovimiento"></div>
+        </section>
+
+        <section id="ventas" class="tab">
+            <div class="sectionhead">
+                <div>
+                    <p class="eyebrow">Historial</p>
+                    <h2>Ventas</h2>
+                </div>
+            </div>
+            <div class="panel" id="tablaVentas"></div>
+        </section>
+
+        <section id="caja" class="tab">
+            <div class="sectionhead">
+                <div>
+                    <p class="eyebrow">Dinero</p>
+                    <h2>Caja</h2>
+                </div>
+            </div>
+            <div class="panel" id="panelCaja"></div>
+        </section>
+
+        <section id="estadisticas" class="tab">
+            <div class="sectionhead">
+                <div>
+                    <p class="eyebrow">Analisis</p>
+                    <h2>Estadisticas</h2>
+                </div>
+            </div>
+            <div class="toolbar">
+                <input type="date" id="desde">
+                <input type="date" id="hasta">
+                <button class="primary" onclick="cargarStats()">Consultar</button>
+            </div>
+            <div class="cards" id="statsCards"></div>
+            <div class="panel" id="ranking"></div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script src="{{ url_for('static', filename='js/inicio.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,882 @@
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+let inventarioPOS = [];
+let carritoPOS = [];
+let pagosPOS = [{ medio: "efectivo", importe: 0 }];
+let cajaPOS = null;
+
+async function api(url, options = {}) {
+    const response = await fetch(url, {
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {}),
+        },
+        ...options,
+    });
+
+    const data = await response.json().catch(() => ({
+        error: "Respuesta invalida",
+    }));
+
+    if (!response.ok) {
+        throw new Error(
+            data.error?.mensaje ||
+            data.error ||
+            "No se pudo completar la operacion"
+        );
+    }
+
+    return data;
+}
+
+function money(value) {
+    return "$ " + Number(value || 0).toLocaleString("es-AR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
+
+function number(value) {
+    return Number(value || 0);
+}
+
+function toast(message) {
+    const element = $("#toast");
+    element.textContent = message;
+    element.classList.add("show");
+    setTimeout(() => element.classList.remove("show"), 2600);
+}
+
+function table(headers, rows) {
+    const body = rows.length
+        ? rows
+            .map((row) => `
+                <tr>
+                    ${row.map((cell) => `<td>${cell}</td>`).join("")}
+                </tr>
+            `)
+            .join("")
+        : `
+            <tr>
+                <td colspan="${headers.length}" class="muted">Sin datos</td>
+            </tr>
+        `;
+
+    return `
+        <table class="table">
+            <thead>
+                <tr>
+                    ${headers.map((header) => `<th>${header}</th>`).join("")}
+                </tr>
+            </thead>
+            <tbody>${body}</tbody>
+        </table>
+    `;
+}
+
+$$('.navbtn').forEach((button) => {
+    button.onclick = () => cambiarSeccion(button.dataset.tab);
+});
+
+function cambiarSeccion(tabId) {
+    $$('.navbtn').forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === tabId);
+    });
+
+    $$('.tab').forEach((tab) => {
+        tab.classList.toggle("active", tab.id === tabId);
+    });
+
+    const acciones = {
+        puntoVenta: cargarPuntoVenta,
+        productos: cargarProductos,
+        inventario: cargarInventario,
+        ventas: cargarVentas,
+        caja: cargarCaja,
+        estadisticas: cargarStats,
+    };
+
+    if (acciones[tabId]) {
+        acciones[tabId]();
+    }
+}
+
+async function estado() {
+    try {
+        const data = await api("/api/estado");
+        const conectada = data.base_datos === "conectada";
+
+        $("#estado").textContent = conectada
+            ? "Servidor · BD conectada"
+            : "Servidor · BD no disponible";
+        $("#estado").classList.toggle("status-ok", conectada);
+        $("#estado").classList.toggle("status-warn", !conectada);
+    } catch (error) {
+        $("#estado").textContent = "Servidor no disponible";
+        $("#estado").classList.add("status-warn");
+    }
+}
+
+async function cargarTodo() {
+    try {
+        const data = await api("/api/estadisticas/resumen");
+
+        $("#cards").innerHTML = [
+            ["Ventas", data.datos.ventas],
+            ["Facturacion", money(data.datos.total)],
+            ["Promedio", money(data.datos.promedio)],
+            ["Estado", "Operativo"],
+        ]
+            .map(([label, value]) => `
+                <div class="card">
+                    <div class="label">${label}</div>
+                    <div class="value">${value}</div>
+                </div>
+            `)
+            .join("");
+
+        const sales = await api("/api/ventas");
+        $("#ultimas").innerHTML = table(
+            ["ID", "Fecha", "Total", "Pago", "Estado"],
+            sales.datos.slice(0, 8).map((item) => [
+                item.id,
+                new Date(item.fecha_hora).toLocaleString("es-AR"),
+                money(item.total),
+                item.medio_pago,
+                item.estado,
+            ])
+        );
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function cargarProductos() {
+    try {
+        const query = encodeURIComponent($("#busqueda")?.value || "");
+        const inactive = $("#inactivos")?.checked
+            ? "&incluir_inactivos=true"
+            : "";
+        const data = await api(`/api/productos?q=${query}${inactive}`);
+
+        $("#tablaProductos").innerHTML = table(
+            ["Producto", "Categoria", "Precio", "Estado"],
+            data.datos.map((item) => [
+                item.nombre,
+                item.categoria,
+                money(item.precio),
+                item.activo
+                    ? '<span class="ok">Activo</span>'
+                    : '<span class="bad">Inactivo</span>',
+            ])
+        );
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+function mostrarProducto() {
+    const form = $("#formProducto");
+    form.classList.remove("hidden");
+    form.innerHTML = `
+        <h3>Nuevo producto</h3>
+        <div class="formgrid">
+            <label>
+                Nombre
+                <input class="field" id="pn">
+            </label>
+            <label>
+                Precio
+                <input class="field" id="pp" type="number" min="0.01" step="0.01">
+            </label>
+            <label>
+                Categoria
+                <select id="pc" class="field"></select>
+            </label>
+            <label>
+                Descripcion
+                <input class="field" id="pd">
+            </label>
+        </div>
+        <div class="formactions">
+            <button class="primary" onclick="guardarProducto()">Guardar</button>
+            <button onclick="$(\'#formProducto\').classList.add(\'hidden\')">Cancelar</button>
+        </div>
+    `;
+
+    api("/api/categorias")
+        .then((data) => {
+            $("#pc").innerHTML = data.datos
+                .map((item) => `<option value="${item.id}">${item.nombre}</option>`)
+                .join("");
+        })
+        .catch((error) => toast(error.message));
+}
+
+async function guardarProducto() {
+    try {
+        await api("/api/productos", {
+            method: "POST",
+            body: JSON.stringify({
+                nombre: $("#pn").value,
+                precio: $("#pp").value,
+                categoria_id: $("#pc").value,
+                descripcion: $("#pd").value,
+            }),
+        });
+
+        toast("Producto guardado");
+        $("#formProducto").classList.add("hidden");
+        cargarProductos();
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function cargarInventario() {
+    try {
+        const query = encodeURIComponent($("#busqStock")?.value || "");
+        const bajo = $("#soloBajo")?.checked ? "&solo_bajo=true" : "";
+        const data = await api(`/api/inventario?q=${query}${bajo}`);
+
+        $("#tablaInventario").innerHTML = table(
+            ["Codigo", "Producto", "Talle", "Color", "Stock", "Minimo"],
+            data.datos.map((item) => [
+                item.codigo,
+                item.producto,
+                item.talle,
+                item.color,
+                item.stock_actual <= item.stock_minimo
+                    ? `<span class="warn">${item.stock_actual}</span>`
+                    : item.stock_actual,
+                item.stock_minimo,
+            ])
+        );
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+function mostrarMovimiento() {
+    const form = $("#formMovimiento");
+    form.classList.remove("hidden");
+    form.innerHTML = `
+        <h3>Movimiento de stock</h3>
+        <div class="formgrid">
+            <label>
+                Variante ID
+                <input class="field" id="mi" type="number" min="1">
+            </label>
+            <label>
+                Tipo
+                <select class="field" id="mt">
+                    <option value="ingresos">Ingreso</option>
+                    <option value="ajustes">Ajuste</option>
+                </select>
+            </label>
+            <label>
+                Cantidad
+                <input class="field" id="mc" type="number" min="0">
+            </label>
+            <label>
+                Motivo
+                <input class="field" id="mm">
+            </label>
+        </div>
+        <button class="primary" onclick="guardarMovimiento()">Registrar</button>
+    `;
+}
+
+async function guardarMovimiento() {
+    try {
+        const tipo = $("#mt").value;
+        await api(`/api/inventario/${tipo}`, {
+            method: "POST",
+            body: JSON.stringify({
+                variante_id: $("#mi").value,
+                cantidad: $("#mc").value,
+                motivo: $("#mm").value,
+            }),
+        });
+
+        toast("Movimiento registrado");
+        $("#formMovimiento").classList.add("hidden");
+        cargarInventario();
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function cargarVentas() {
+    try {
+        const data = await api("/api/ventas");
+        $("#tablaVentas").innerHTML = table(
+            ["ID", "Fecha", "Total", "Pago", "Estado"],
+            data.datos.map((item) => [
+                item.id,
+                new Date(item.fecha_hora).toLocaleString("es-AR"),
+                money(item.total),
+                item.medio_pago,
+                item.estado,
+            ])
+        );
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function cargarPuntoVenta() {
+    try {
+        const [inventory, cash] = await Promise.all([
+            api("/api/inventario"),
+            api("/api/caja/actual"),
+        ]);
+
+        inventarioPOS = inventory.datos;
+        cajaPOS = cash.datos;
+        renderCajaPOS();
+
+        if (!cajaPOS) {
+            $("#posProducto").innerHTML = "<option value=\"\">Abrir una caja primero</option>";
+            $("#posCarrito").innerHTML = `
+                <div class="empty-state">
+                    No hay una caja abierta. Abri la caja antes de registrar cobros.
+                </div>
+            `;
+            $("#btnConfirmarVenta").disabled = true;
+            return;
+        }
+
+        $("#btnConfirmarVenta").disabled = false;
+        renderProductosPOS();
+
+        if (!pagosPOS.length) {
+            pagosPOS = [{ medio: "efectivo", importe: 0 }];
+        }
+
+        renderPos();
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+function renderCajaPOS() {
+    $("#posCaja").innerHTML = cajaPOS
+        ? `<span class="open-dot"></span> Caja #${cajaPOS.id} abierta`
+        : '<span class="closed-dot"></span> Caja cerrada';
+}
+
+function filtrarProductosPOS() {
+    renderProductosPOS();
+}
+
+function renderProductosPOS() {
+    const search = ($( "#posBusqueda" )?.value || "").trim().toLowerCase();
+    const disponibles = inventarioPOS.filter((item) => {
+        if (number(item.stock_actual) <= 0) {
+            return false;
+        }
+
+        if (!search) {
+            return true;
+        }
+
+        const text = [
+            item.codigo,
+            item.producto,
+            item.talle,
+            item.color,
+        ]
+            .join(" ")
+            .toLowerCase();
+
+        return text.includes(search);
+    });
+
+    $("#posProducto").innerHTML = disponibles.length
+        ? disponibles
+            .map((item) => `
+                <option value="${item.id}">
+                    ${item.codigo} · ${item.producto} · ${item.talle}/${item.color}
+                    · ${money(item.precio)} · stock ${item.stock_actual}
+                </option>
+            `)
+            .join("")
+        : '<option value="">No hay productos disponibles</option>';
+}
+
+function agregarAlCarrito() {
+    const variantId = number($("#posProducto").value);
+    const quantity = number($("#posCantidad").value);
+    const item = inventarioPOS.find((row) => number(row.id) === variantId);
+
+    if (!item) {
+        toast("Selecciona una variante disponible");
+        return;
+    }
+
+    if (quantity <= 0) {
+        toast("La cantidad debe ser mayor que cero");
+        return;
+    }
+
+    const existing = carritoPOS.find(
+        (row) => row.variante_id === variantId
+    );
+    const nextQuantity = (existing?.cantidad || 0) + quantity;
+
+    if (nextQuantity > number(item.stock_actual)) {
+        toast("La cantidad supera el stock disponible");
+        return;
+    }
+
+    if (existing) {
+        existing.cantidad = nextQuantity;
+    } else {
+        carritoPOS.push({
+            variante_id: variantId,
+            cantidad: quantity,
+            nombre: item.producto,
+            detalle: `${item.codigo} · ${item.talle}/${item.color}`,
+            precio: number(item.precio),
+            stock: number(item.stock_actual),
+        });
+    }
+
+    $("#posCantidad").value = 1;
+    renderPos();
+}
+
+function cambiarCantidadCarrito(index, value) {
+    const quantity = number(value);
+    const item = carritoPOS[index];
+
+    if (!item) {
+        return;
+    }
+
+    if (quantity <= 0) {
+        eliminarDelCarrito(index);
+        return;
+    }
+
+    if (quantity > item.stock) {
+        toast("La cantidad supera el stock disponible");
+        renderPos();
+        return;
+    }
+
+    item.cantidad = quantity;
+    renderPos();
+}
+
+function eliminarDelCarrito(index) {
+    carritoPOS.splice(index, 1);
+    renderPos();
+}
+
+function vaciarCarrito() {
+    carritoPOS = [];
+    pagosPOS = [{ medio: "efectivo", importe: 0 }];
+    $("#posEfectivoRecibido").value = "";
+    $("#posResultado").innerHTML = "";
+    renderPos();
+}
+
+function totalCarrito() {
+    return carritoPOS.reduce(
+        (total, item) => total + item.precio * item.cantidad,
+        0
+    );
+}
+
+function agregarPago() {
+    pagosPOS.push({ medio: "transferencia", importe: 0 });
+    renderPos();
+}
+
+function eliminarPago(index) {
+    if (pagosPOS.length === 1) {
+        toast("Debe quedar al menos un medio de pago");
+        return;
+    }
+
+    pagosPOS.splice(index, 1);
+    renderPos();
+}
+
+function actualizarPago(index, field, value) {
+    pagosPOS[index][field] = field === "importe"
+        ? number(value)
+        : value;
+    renderPos();
+}
+
+function completarPago(index) {
+    const total = totalCarrito();
+    const otros = pagosPOS.reduce(
+        (sum, payment, position) => {
+            return position === index
+                ? sum
+                : sum + number(payment.importe);
+        },
+        0
+    );
+
+    pagosPOS[index].importe = Math.max(0, total - otros);
+    renderPos();
+}
+
+function renderPos() {
+    const total = totalCarrito();
+    const pagosTotal = pagosPOS.reduce(
+        (sum, payment) => sum + number(payment.importe),
+        0
+    );
+    const diferencia = total - pagosTotal;
+    const efectivo = pagosPOS.reduce(
+        (sum, payment) => {
+            return payment.medio === "efectivo"
+                ? sum + number(payment.importe)
+                : sum;
+        },
+        0
+    );
+    const recibido = number($("#posEfectivoRecibido")?.value);
+    const cambio = Math.max(0, recibido - efectivo);
+
+    $("#posCarrito").innerHTML = carritoPOS.length
+        ? `
+            <div class="cart-head">
+                <span>Carrito</span>
+                <strong>${carritoPOS.length} producto(s)</strong>
+            </div>
+            ${carritoPOS.map((item, index) => `
+                <div class="cart-row">
+                    <div class="cart-product">
+                        <strong>${item.nombre}</strong>
+                        <span>${item.detalle}</span>
+                    </div>
+                    <input
+                        class="qty"
+                        type="number"
+                        min="1"
+                        max="${item.stock}"
+                        value="${item.cantidad}"
+                        onchange="cambiarCantidadCarrito(${index}, this.value)"
+                    >
+                    <strong>${money(item.precio * item.cantidad)}</strong>
+                    <button
+                        class="iconbtn"
+                        onclick="eliminarDelCarrito(${index})"
+                    >
+                        Quitar
+                    </button>
+                </div>
+            `).join("")}
+        `
+        : '<div class="empty-cart">El carrito esta vacio.</div>';
+
+    $("#posResumen").innerHTML = `
+        <div class="summary-line">
+            <span>Subtotal</span>
+            <strong>${money(total)}</strong>
+        </div>
+        <div class="summary-total">
+            <span>Total a cobrar</span>
+            <strong>${money(total)}</strong>
+        </div>
+    `;
+
+    $("#posPagos").innerHTML = pagosPOS.map((payment, index) => `
+        <div class="payment-row">
+            <select
+                class="field"
+                onchange="actualizarPago(${index}, 'medio', this.value)"
+            >
+                <option value="efectivo" ${payment.medio === "efectivo" ? "selected" : ""}>
+                    Efectivo
+                </option>
+                <option value="transferencia" ${payment.medio === "transferencia" ? "selected" : ""}>
+                    Transferencia
+                </option>
+                <option value="tarjeta" ${payment.medio === "tarjeta" ? "selected" : ""}>
+                    Tarjeta
+                </option>
+            </select>
+            <input
+                class="field"
+                type="number"
+                min="0"
+                step="0.01"
+                value="${payment.importe || ""}"
+                oninput="actualizarPago(${index}, 'importe', this.value)"
+            >
+            <button class="linkbtn" onclick="completarPago(${index})">
+                Completar
+            </button>
+            ${pagosPOS.length > 1 ? `
+                <button class="iconbtn" onclick="eliminarPago(${index})">
+                    Quitar
+                </button>
+            ` : ""}
+        </div>
+    `).join("");
+
+    $("#posEfectivoBox").classList.toggle("hidden", efectivo <= 0);
+    $("#posCambio").textContent = efectivo > 0
+        ? `Cambio: ${money(cambio)}`
+        : "";
+
+    const summary = $("#posResultado");
+
+    if (
+        carritoPOS.length &&
+        Math.abs(diferencia) < 0.01 &&
+        (efectivo === 0 || recibido >= efectivo)
+    ) {
+        summary.innerHTML = '<div class="ready">Cobro listo para confirmar.</div>';
+    } else if (carritoPOS.length) {
+        summary.innerHTML = `
+            <div class="pending">
+                Falta cobrar ${money(Math.max(0, diferencia))}.
+            </div>
+        `;
+    } else {
+        summary.innerHTML = "";
+    }
+}
+
+async function confirmarCobro() {
+    if (!cajaPOS) {
+        toast("Primero abri una caja");
+        return;
+    }
+
+    if (!carritoPOS.length) {
+        toast("Agrega al menos un producto");
+        return;
+    }
+
+    const total = totalCarrito();
+    const pagos = pagosPOS
+        .filter((payment) => number(payment.importe) > 0)
+        .map((payment) => ({
+            medio: payment.medio,
+            importe: number(payment.importe).toFixed(2),
+        }));
+    const sumaPagos = pagos.reduce(
+        (sum, payment) => sum + number(payment.importe),
+        0
+    );
+    const efectivo = pagos
+        .filter((payment) => payment.medio === "efectivo")
+        .reduce((sum, payment) => sum + number(payment.importe), 0);
+    const recibido = number($("#posEfectivoRecibido").value);
+
+    if (Math.abs(sumaPagos - total) > 0.01) {
+        toast(`Los pagos deben sumar ${money(total)}`);
+        return;
+    }
+
+    if (efectivo > 0 && recibido < efectivo) {
+        toast("El efectivo recibido no alcanza");
+        return;
+    }
+
+    const button = $("#btnConfirmarVenta");
+    button.disabled = true;
+    button.textContent = "Guardando...";
+
+    try {
+        const response = await api("/api/ventas", {
+            method: "POST",
+            body: JSON.stringify({
+                solicitud_id: crypto.randomUUID(),
+                caja_id: cajaPOS.id,
+                items: carritoPOS.map((item) => ({
+                    variante_id: item.variante_id,
+                    cantidad: item.cantidad,
+                })),
+                pagos,
+                efectivo_recibido: recibido.toFixed(2),
+            }),
+        });
+
+        const sale = response.datos;
+
+        $("#posResultado").innerHTML = `
+            <div class="sale-success">
+                <strong>Venta #${sale.id} confirmada</strong>
+                <span>Total: ${money(sale.total)}</span>
+                <span>Cambio: ${money(sale.cambio)}</span>
+            </div>
+        `;
+
+        toast(`Venta #${sale.id} registrada`);
+
+        carritoPOS = [];
+        pagosPOS = [{ medio: "efectivo", importe: 0 }];
+        $("#posEfectivoRecibido").value = "";
+
+        await cargarPuntoVenta();
+        await cargarVentas();
+        await cargarInventario();
+        await cargarTodo();
+    } catch (error) {
+        toast(error.message);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Confirmar cobro";
+    }
+}
+
+async function cargarCaja() {
+    try {
+        const data = await api("/api/caja/actual");
+        const panel = $("#panelCaja");
+
+        if (!data.datos) {
+            panel.innerHTML = `
+                <h3>No hay caja abierta</h3>
+                <div class="formgrid">
+                    <label>
+                        Saldo inicial
+                        <input
+                            class="field"
+                            id="si"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value="0"
+                        >
+                    </label>
+                </div>
+                <button class="primary" onclick="abrirCaja()">Abrir caja</button>
+            `;
+            return;
+        }
+
+        panel.innerHTML = `
+            <h3>Caja #${data.datos.id}</h3>
+            <p>
+                Abierta desde
+                ${new Date(data.datos.fecha_apertura).toLocaleString("es-AR")}
+            </p>
+            <div class="formgrid">
+                <label>
+                    Efectivo contado al cierre
+                    <input
+                        class="field"
+                        id="cc"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                    >
+                </label>
+            </div>
+            <button
+                class="primary"
+                onclick="cerrarCaja(${data.datos.id})"
+            >
+                Cerrar caja
+            </button>
+        `;
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function abrirCaja() {
+    try {
+        await api("/api/caja/aperturas", {
+            method: "POST",
+            body: JSON.stringify({
+                saldo_inicial: $("#si").value,
+            }),
+        });
+
+        toast("Caja abierta");
+        await cargarCaja();
+        await cargarPuntoVenta();
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function cerrarCaja(id) {
+    try {
+        const data = await api(`/api/caja/${id}/cierres`, {
+            method: "POST",
+            body: JSON.stringify({
+                efectivo_contado: $("#cc").value,
+            }),
+        });
+
+        toast(`Caja cerrada · diferencia ${money(data.datos.diferencia)}`);
+        await cargarCaja();
+        await cargarPuntoVenta();
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+async function cargarStats() {
+    try {
+        const desde = $("#desde").value;
+        const hasta = $("#hasta").value;
+        const params = new URLSearchParams();
+
+        if (desde) {
+            params.set("desde", desde);
+        }
+
+        if (hasta) {
+            params.set("hasta", hasta);
+        }
+
+        const query = params.toString() ? `?${params}` : "";
+        const data = await api(`/api/estadisticas/resumen${query}`);
+
+        $("#statsCards").innerHTML = [
+            ["Ventas", data.datos.ventas],
+            ["Facturacion", money(data.datos.total)],
+            ["Ticket promedio", money(data.datos.promedio)],
+        ]
+            .map(([label, value]) => `
+                <div class="card">
+                    <div class="label">${label}</div>
+                    <div class="value">${value}</div>
+                </div>
+            `)
+            .join("");
+
+        const ranking = await api(`/api/estadisticas/productos${query}`);
+        $("#ranking").innerHTML = `
+            <h3>Productos mas vendidos</h3>
+            ${table(
+                ["Producto", "Unidades", "Facturacion"],
+                ranking.datos.map((item) => [
+                    item.producto,
+                    item.unidades,
+                    money(item.facturacion),
+                ])
+            )}
+        `;
+    } catch (error) {
+        toast(error.message);
+    }
+}
+
+(function iniciar() {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 29);
+
+    $("#desde").value = start.toISOString().slice(0, 10);
+    $("#hasta").value = today.toISOString().slice(0, 10);
+
+    estado();
+    cargarTodo();
+})();
