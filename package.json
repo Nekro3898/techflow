@@ -1,0 +1,9 @@
+{
+  "name": "techflow-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Servidor HTTP minimo con Node.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
