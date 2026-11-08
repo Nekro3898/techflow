@@ -9,6 +9,7 @@ class ProductosRepository:
                 p.nombre,
                 p.descripcion,
                 p.categoria_id,
+                p.proveedor_id,
                 c.nombre AS categoria,
                 p.precio,
                 p.activo,
@@ -41,6 +42,7 @@ class ProductosRepository:
                     p.nombre,
                     p.descripcion,
                     p.categoria_id,
+                p.proveedor_id,
                     c.nombre AS categoria,
                     p.precio,
                     p.activo
@@ -53,7 +55,7 @@ class ProductosRepository:
             return cur.fetchone()
 
     def crear_producto(self, data):
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 """
                 INSERT INTO productos (
@@ -78,42 +80,20 @@ class ProductosRepository:
             return cur.lastrowid
 
     def modificar_producto(self, producto_id, data):
-        with cursor_db() as (_, cur):
-            cur.execute(
-                """
-                UPDATE productos
-                SET
-                    nombre = %s,
-                    descripcion = %s,
-                    categoria_id = %s,
-                    proveedor_id = %s,
-                    precio = %s,
-                    activo = %s
-                WHERE id = %s
-                """,
-                (
-                    data["nombre"],
-                    data.get("descripcion"),
-                    data["categoria_id"],
-                    data.get("proveedor_id"),
-                    data["precio"],
-                    data.get("activo", True),
-                    producto_id,
-                ),
-            )
-            return cur.rowcount > 0
+        allowed = {'precio', 'categoria_id', 'activo', 'nombre', 'proveedor_id', 'descripcion'}
+        if not data or set(data) - allowed:
+            raise ValueError("Campos de actualizacion invalidos.")
+        with cursor_db(escritura=True) as (_, cur):
+            cur.execute("SELECT id FROM productos WHERE id = %s FOR UPDATE", (producto_id,))
+            if not cur.fetchone():
+                return False
+            assignments = ", ".join(f"{field} = %s" for field in data)
+            cur.execute(f"UPDATE productos SET {assignments} WHERE id = %s",
+                        (*data.values(), producto_id))
+            return True
 
     def desactivar_producto(self, producto_id):
-        with cursor_db() as (_, cur):
-            cur.execute(
-                """
-                UPDATE productos
-                SET activo = FALSE
-                WHERE id = %s
-                """,
-                (producto_id,),
-            )
-            return cur.rowcount > 0
+        return self.modificar_producto(producto_id, {"activo": False})
 
     def listar_catalogo(self, tabla):
         if tabla not in {"categorias", "talles", "colores"}:
@@ -133,7 +113,7 @@ class ProductosRepository:
         if tabla not in {"categorias", "talles", "colores"}:
             raise ValueError("Catalogo invalido")
 
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 f"""
                 INSERT INTO {tabla} (nombre)
@@ -168,7 +148,7 @@ class ProductosRepository:
             return cur.fetchall()
 
     def crear_variante(self, data):
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 """
                 INSERT INTO variantes (
@@ -191,26 +171,17 @@ class ProductosRepository:
             return cur.lastrowid
 
     def modificar_variante(self, variante_id, data):
-        with cursor_db() as (_, cur):
-            cur.execute(
-                """
-                UPDATE variantes
-                SET
-                    talle_id = %s,
-                    color_id = %s,
-                    codigo = %s,
-                    stock_minimo = %s
-                WHERE id = %s
-                """,
-                (
-                    data["talle_id"],
-                    data["color_id"],
-                    data["codigo"],
-                    data.get("stock_minimo", 0),
-                    variante_id,
-                ),
-            )
-            return cur.rowcount > 0
+        allowed = {'codigo', 'talle_id', 'color_id', 'stock_minimo'}
+        if not data or set(data) - allowed:
+            raise ValueError("Campos de actualizacion invalidos.")
+        with cursor_db(escritura=True) as (_, cur):
+            cur.execute("SELECT id FROM variantes WHERE id = %s FOR UPDATE", (variante_id,))
+            if not cur.fetchone():
+                return False
+            assignments = ", ".join(f"{field} = %s" for field in data)
+            cur.execute(f"UPDATE variantes SET {assignments} WHERE id = %s",
+                        (*data.values(), variante_id))
+            return True
 
     def listar_proveedores(self):
         with cursor_db() as (_, cur):
@@ -224,7 +195,7 @@ class ProductosRepository:
             return cur.fetchall()
 
     def crear_proveedor(self, data):
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 """
                 INSERT INTO proveedores (
@@ -247,25 +218,14 @@ class ProductosRepository:
             return cur.lastrowid
 
     def modificar_proveedor(self, proveedor_id, data):
-        with cursor_db() as (_, cur):
-            cur.execute(
-                """
-                UPDATE proveedores
-                SET
-                    nombre = %s,
-                    telefono = %s,
-                    email = %s,
-                    direccion = %s,
-                    activo = %s
-                WHERE id = %s
-                """,
-                (
-                    data["nombre"],
-                    data.get("telefono"),
-                    data.get("email"),
-                    data.get("direccion"),
-                    data.get("activo", True),
-                    proveedor_id,
-                ),
-            )
-            return cur.rowcount > 0
+        allowed = {'activo', 'nombre', 'telefono', 'email', 'direccion'}
+        if not data or set(data) - allowed:
+            raise ValueError("Campos de actualizacion invalidos.")
+        with cursor_db(escritura=True) as (_, cur):
+            cur.execute("SELECT id FROM proveedores WHERE id = %s FOR UPDATE", (proveedor_id,))
+            if not cur.fetchone():
+                return False
+            assignments = ", ".join(f"{field} = %s" for field in data)
+            cur.execute(f"UPDATE proveedores SET {assignments} WHERE id = %s",
+                        (*data.values(), proveedor_id))
+            return True

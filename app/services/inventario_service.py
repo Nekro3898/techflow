@@ -1,4 +1,5 @@
 from app.db import cursor_db
+from app.services import entero, texto, NoEncontrado
 
 
 class InventarioService:
@@ -45,18 +46,11 @@ class InventarioService:
         motivo,
         diferencia=False,
     ):
-        try:
-            variante_id = int(variante_id)
-            cantidad = int(cantidad)
-        except (TypeError, ValueError):
-            raise ValueError("Variante y cantidad deben ser validas.")
+        variante_id = entero(variante_id, "Variante")
+        cantidad = entero(cantidad, "Cantidad", 0 if tipo == "ajuste" else 1)
+        motivo = texto(motivo, "Motivo", 180)
 
-        motivo = str(motivo or "").strip()
-
-        if not motivo:
-            raise ValueError("El motivo es obligatorio.")
-
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 "SELECT stock_actual FROM variantes WHERE id = %s FOR UPDATE",
                 (variante_id,),
@@ -64,7 +58,7 @@ class InventarioService:
             row = cur.fetchone()
 
             if not row:
-                raise LookupError("Variante no encontrada.")
+                raise NoEncontrado("Variante no encontrada.")
 
             actual = int(row["stock_actual"])
 
@@ -77,7 +71,8 @@ class InventarioService:
                     raise ValueError("El ajuste no cambia el stock.")
 
                 nuevo = cantidad
-                movimiento_tipo = "ajuste"
+                movimiento_tipo = "ingreso" if delta > 0 else "egreso"
+                motivo = f"Ajuste de {actual} a {nuevo}: {motivo}"
                 movimiento_cantidad = abs(delta)
             else:
                 if cantidad <= 0:
@@ -90,6 +85,9 @@ class InventarioService:
                 nuevo = actual + delta
                 movimiento_tipo = tipo
                 movimiento_cantidad = cantidad
+
+            if nuevo > 2147483647:
+                raise ValueError("El stock supera el limite permitido.")
 
             if nuevo < 0:
                 raise ValueError("No hay stock suficiente.")

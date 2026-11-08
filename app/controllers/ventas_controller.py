@@ -20,6 +20,7 @@ def listar():
             request.args.get("desde"),
             request.args.get("hasta"),
             request.args.get("estado"),
+            request.args.get("limite"),
         )
     })
 

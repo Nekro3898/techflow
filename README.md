@@ -1,107 +1,110 @@
 # TechFlow Solutions
 
-Proyecto académico de un sistema de gestión para tiendas de ropa.
+Sistema académico de gestión de una tienda de ropa, desarrollado con Flask,
+MySQL/MariaDB y una interfaz HTML, CSS y JavaScript.
 
-## Estado actual
+## Ejecutar
 
-Ya funciona una pantalla de bienvenida local desarrollada con
-Python y Flask, con el HTML y el CSS separados. El botón «Comprobar servidor»
-consulta `/api/estado` usando JavaScript y muestra éxito o error.
-Esta comprobación no verifica una conexión a MySQL.
+Con MySQL de XAMPP encendido, desde la carpeta del proyecto:
 
-Todavía no están implementados la conexión a MySQL ni los módulos
-de productos, inventario, ventas, caja, proveedores y estadísticas.
+```powershell
+python -m pip install -r requirements.txt
+python run.py
+```
 
-## Tecnologías
+Abrir http://127.0.0.1:5000. `npm start` ejecuta el mismo servidor Flask.
+Para detenerlo, presionar Ctrl+C. `server.js` se conserva como ejemplo histórico
+independiente; no es el servidor de la aplicación.
 
-- Python y Flask: servidor local.
-- HTML y CSS: contenido y diseño de las pantallas.
-- JavaScript: consulta del estado del servidor desde la interfaz.
-- MySQL: base de datos, pendiente de conectar.
-
-## Cómo ejecutar el proyecto
-
-### Primera vez
-
-1. Instalar Python, GitHub Desktop y Visual Studio Code.
-   La versión inicial fue probada con Python 3.10.9.
-2. Clonar este repositorio con GitHub Desktop.
-3. Abrir la carpeta del proyecto en VS Code.
-4. Abrir Terminal → New Terminal y ejecutar, uno por uno:
+Para trabajar con un entorno virtual:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-5. En VS Code, usar Python: Select Interpreter y seleccionar
-   `.venv\Scripts\python.exe`.
-
-### Iniciar la aplicación
-
-Abrir `run.py` y presionar Run Python File en VS Code.
-
-También se puede ejecutar desde la terminal:
-
-```powershell
 .\.venv\Scripts\python.exe run.py
 ```
 
-Con el servidor encendido, abrir:
+## Configuración de la base
 
-http://127.0.0.1:5000
+`app/db.py` lee `.env` mediante python-dotenv. Crear `.env` a partir de
+`.env.example`, con las credenciales del usuario de aplicación:
 
-El navegador no se abre automáticamente.
-Para detener el servidor, presionar Ctrl + C en la terminal.
-
-Por ahora no hace falta instalar MySQL para ver la bienvenida.
-
-## Organización actual
-
-```text
-techflow/
-├── app/
-│   ├── __init__.py                 # Crea la aplicación
-│   ├── controllers/
-│   │   ├── __init__.py
-│   │   └── inicio_controller.py    # Bienvenida y estado del servidor
-│   ├── models/__init__.py          # Futuras clases del dominio
-│   ├── repositories/__init__.py    # Futuro acceso a MySQL
-│   └── services/__init__.py        # Futuras reglas del negocio
-├── templates/index.html           # Pantalla de bienvenida
-├── static/
-│   ├── css/estilos.css             # Diseño
-│   └── js/inicio.js                # Consulta a /api/estado
-├── sql/.gitkeep                    # Futuros scripts SQL
-├── tests/.gitkeep                  # Futuras pruebas
-├── docs/
-│   ├── acuerdos-tecnicos.md        # Propuesta para revisar con el equipo
-│   └── catedras/.gitkeep           # Futuros materiales académicos
-├── run.py                         # Inicia el servidor
-├── requirements.txt               # Dependencias
-├── .gitignore
-├── .env.example                   # Plantilla sin secretos
-└── README.md
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=techflow
+DB_USER=techflow_app
+DB_PASSWORD=techflow
 ```
 
-La carpeta `.venv` se crea en cada computadora y no se sube a GitHub.
-`.env.example` es una plantilla para la futura conexión: actualmente no se lee.
-Los archivos `.gitkeep` permiten registrar carpetas aún vacías.
+Para una instalación nueva, ejecutar `sql/techflow.sql` como administrador.
+El script crea la base, sus tablas, datos iniciales y el usuario con permisos
+SELECT, INSERT, UPDATE y DELETE. Usa una collation compatible con MariaDB de XAMPP.
+No elimina tablas. Si `techflow` ya existe, detener la importación: no es un script
+de actualización ni se necesita volver a importarlo para aplicar cambios Python/JS.
 
-## Acuerdos técnicos
+Comprobar http://127.0.0.1:5000/api/estado: `base_datos` debe indicar `conectada`.
+Un resultado `no disponible` significa que hay que revisar el servicio,
+las credenciales o los permisos; no significa que falten archivos de interfaz.
 
-Leer [la propuesta de rutas, formatos y responsabilidades](docs/acuerdos-tecnicos.md)
-antes de construir módulos. Está pendiente de revisión por el equipo.
-Solo `/` y `/api/estado` están implementados; el resto son propuestas.
+## Demostración
 
-## Comprobación manual
+La base paralela `techflow_demo` tiene ejemplos de 14 días y la misma estructura.
+Con la demo instalada, ejecutar:
 
-1. Iniciar el servidor, abrir la bienvenida y pulsar «Comprobar servidor».
-2. Confirmar el mensaje de éxito.
-3. Detener el servidor con Ctrl + C, sin cerrar ni recargar la página.
-4. Pulsar el botón y comprobar el mensaje de error.
-5. Reiniciar el servidor y repetir: debe volver a mostrar éxito.
+```powershell
+python run_demo.py
+```
 
+Abrir http://127.0.0.1:5001. El lanzador no modifica `.env` y usa el usuario
+`techflow_app`. Se pueden configurar credenciales distintas con las variables
+`TECHFLOW_DEMO_USER` y `TECHFLOW_DEMO_PASSWORD`. Ver `sql/DEMO.md`.
+
+## Organización
+
+- `app/controllers/`: rutas HTTP y respuestas JSON.
+- `app/services/`: validaciones y reglas de negocio.
+- `app/repositories/`: acceso a productos, variantes, catálogos y proveedores.
+- `app/models/producto.py`: clases del dominio.
+- `app/db.py`: conexión, transacciones y coordinación de escrituras.
+- `templates/index.html`: la interfaz existente.
+- `static/css/estilos.css` y `static/js/inicio.js`: estilos y comportamiento.
+- `sql/`: instalación y ejemplos.
+
+## Funciones y reglas actuales
+
+La interfaz incluye resumen, productos, inventario, punto de venta, historial,
+caja y estadísticas. La API también permite editar/desactivar productos, administrar
+variantes y proveedores y anular ventas. Esas operaciones conservan sus rutas;
+no se agregaron nuevas pantallas al diseño existente.
+
+- Los precios finales y el stock se verifican en el servidor.
+- Solo se aceptan cantidades enteras y precios positivos después del redondeo.
+- Un ajuste de inventario expresa el **stock final**; el historial conserva la
+  dirección mediante ingreso/egreso y registra el stock anterior y el nuevo en el motivo.
+- Guardar un PATCH modifica solo los campos enviados. No borra proveedor ni
+  descripción ni reactiva un producto por omisión.
+- Debe haber una sola caja abierta. Las escrituras de la aplicación se coordinan
+  por base mediante un cerrojo de MariaDB/MySQL y transacciones.
+- Las anulaciones se permiten solo mientras la caja de esa venta sigue abierta.
+  Restituyen stock y registran un retiro compensatorio del efectivo; no borran el
+  asiento original. Las cajas cerradas conservan su historial.
+- Si se pierde la respuesta de un cobro, el navegador conserva la solicitud.
+  Volver a confirmar reenvía los mismos datos, incluso después de recargar la página.
+  Hasta resolverla, el carrito queda bloqueado para evitar modificar una venta incierta.
+- Las fechas SQL se manejan en horario argentino UTC-03 y la API devuelve ISO 8601
+  con offset; las estadísticas usan fechas inclusivas.
+- El resumen distingue los últimos 30 días de los indicadores de hoy.
+
+## Verificación
+
+Se comprobaron sintaxis, validaciones, PATCH, movimientos, anulaciones, reintentos,
+concurrencia y la interfaz en una base temporal, sin usar los datos de trabajo para
+las pruebas. El detalle está en `docs/revision-2026-11-08.md`.
+
+Los lanzadores se mantienen locales (127.0.0.1) y sin depurador. El proyecto no
+incluye login/roles ni configuración de despliegue público. No versionar `.env`,
+contraseñas, `.venv`, respaldos o archivos `__pycache__`.
 
 ## Equipo
 
@@ -111,23 +114,8 @@ Solo `/` y `/api/estado` están implementados; el resto son propuestas.
 - Abel: interfaz, estilos y manual de usuario.
 - Andrés: estadísticas, reportes y textos académicos.
 
-## Cómo colaborar
+## Colaboración
 
-1. Actualizar la rama `main` antes de comenzar una tarea.
-2. Crear una rama con un nombre que describa el trabajo.
-3. Realizar los cambios y probarlos.
-4. Crear un commit con un mensaje claro.
-5. Subir la rama y abrir un pull request hacia `main`.
-6. Pedir revisión a otro integrante antes de integrar los cambios.
-
-No subir contraseñas, archivos `.env` ni la carpeta `.venv`.
-Los cambios de tablas o de comunicación entre módulos deben
-acordarse con quienes los utilizan.
-
-## Espacios del equipo
-
-- [Repositorio](https://github.com/Nekro3898/techflow)
-- [Tablero de tareas](https://techflow-equipo-tablero-ezequiel.dusky-moss-4252.chatgpt.site/board)
-- [Página de TechFlow](https://techflow-solutions-coronda.dusky-moss-4252.chatgpt.site)
-
-Exposición: 10 de noviembre de 2026.
+Actualizar main, trabajar en una rama, probar los cambios y abrir un pull request
+con revisión de otro integrante. Acordar cambios de tablas o contratos con quienes
+los utilizan.

@@ -1,4 +1,5 @@
-from datetime import date, timedelta
+from datetime import datetime, timezone, timedelta
+from app.services import rango_fechas
 
 from flask import Blueprint, jsonify, request
 
@@ -10,10 +11,10 @@ service = EstadisticasService()
 
 
 def fechas():
-    hoy = date.today()
+    hoy = datetime.now(timezone(timedelta(hours=-3))).date()
     desde = request.args.get("desde") or str(hoy - timedelta(days=29))
     hasta = request.args.get("hasta") or str(hoy)
-    return desde, hasta
+    return rango_fechas(desde, hasta)
 
 
 @bp.get("/resumen")

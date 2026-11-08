@@ -1,26 +1,9 @@
-CREATE DATABASE IF NOT EXISTS techflow
+-- Instalacion inicial: detener si techflow ya existe. No elimina datos.
+CREATE DATABASE techflow
     CHARACTER SET utf8mb4
-    COLLATE utf8mb4_0900_ai_ci;
+    COLLATE utf8mb4_unicode_ci;
 
 USE techflow;
-
-SET FOREIGN_KEY_CHECKS = 0;
-
-DROP TABLE IF EXISTS movimientos_caja;
-DROP TABLE IF EXISTS pagos_venta;
-DROP TABLE IF EXISTS solicitudes_venta;
-DROP TABLE IF EXISTS movimientos_stock;
-DROP TABLE IF EXISTS detalle_venta;
-DROP TABLE IF EXISTS ventas;
-DROP TABLE IF EXISTS caja;
-DROP TABLE IF EXISTS variantes;
-DROP TABLE IF EXISTS colores;
-DROP TABLE IF EXISTS talles;
-DROP TABLE IF EXISTS proveedores;
-DROP TABLE IF EXISTS productos;
-DROP TABLE IF EXISTS categorias;
-
-SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE categorias (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

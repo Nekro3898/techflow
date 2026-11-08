@@ -1,6 +1,10 @@
 from pathlib import Path
+from datetime import datetime, date, timezone, timedelta
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
+from flask.json.provider import DefaultJSONProvider
+from werkzeug.exceptions import HTTPException
+from app.services import NoEncontrado, objeto
 from mysql.connector import Error as MySQLError
 
 from app.controllers.caja_controller import bp as caja_bp
@@ -20,6 +24,23 @@ def create_app():
         template_folder=str(raiz / "templates"),
         static_folder=str(raiz / "static"),
     )
+    app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
+
+    def json_default(value):
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone(timedelta(hours=-3)))
+            return value.isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        return DefaultJSONProvider.default(value)
+
+    app.json.default = json_default
+
+    @app.before_request
+    def validar_json():
+        if request.path.startswith('/api/') and request.method in {'POST', 'PATCH'}:
+            objeto(request.get_json(silent=True))
 
     app.register_blueprint(inicio_bp)
     app.register_blueprint(productos_bp)
@@ -33,12 +54,13 @@ def create_app():
     def validation(error):
         return jsonify({"error": str(error)}), 400
 
-    @app.errorhandler(LookupError)
+    @app.errorhandler(NoEncontrado)
     def not_found(error):
         return jsonify({"error": str(error)}), 404
 
     @app.errorhandler(MySQLError)
     def database_error(error):
+        app.logger.error('Error de base de datos: %s', error)
         status = 409 if getattr(error, "errno", None) in {
             1062,
             1451,
@@ -48,5 +70,13 @@ def create_app():
         return jsonify({
             "error": "No se pudo completar la operacion en la base de datos.",
         }), status
+
+    @app.errorhandler(HTTPException)
+    def http_error(error):
+        return jsonify({'error': error.description}), error.code
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({'error': 'No se pudo completar la operacion.'}), 500
 
     return app

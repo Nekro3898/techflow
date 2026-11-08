@@ -1,25 +1,31 @@
 from app.db import cursor_db
+from app.services import rango_fechas
 
 
 class EstadisticasService:
     def resumen(self, desde, hasta):
+        rango_fechas(desde, hasta)
         with cursor_db() as (_, cur):
             cur.execute(
                 """
                 SELECT
                     COUNT(*) AS ventas,
                     COALESCE(SUM(total), 0) AS total,
-                    COALESCE(AVG(total), 0) AS promedio
-                FROM ventas
-                WHERE estado = 'completada'
-                  AND fecha_hora >= CONCAT(%s, ' 00:00:00')
-                  AND fecha_hora <= CONCAT(%s, ' 23:59:59')
+                    COALESCE(AVG(total), 0) AS promedio,
+                    COALESCE(SUM(d.unidades), 0) AS unidades
+                FROM ventas v
+                LEFT JOIN (SELECT venta_id, SUM(cantidad) AS unidades
+                           FROM detalle_venta GROUP BY venta_id) d ON d.venta_id = v.id
+                WHERE v.estado = 'completada'
+                  AND v.fecha_hora >= CONCAT(%s, ' 00:00:00')
+                  AND v.fecha_hora <= CONCAT(%s, ' 23:59:59')
                 """,
                 (desde, hasta),
             )
             return cur.fetchone()
 
     def productos(self, desde, hasta):
+        rango_fechas(desde, hasta)
         with cursor_db() as (_, cur):
             cur.execute(
                 """
@@ -43,6 +49,7 @@ class EstadisticasService:
             return cur.fetchall()
 
     def por_dia(self, desde, hasta):
+        rango_fechas(desde, hasta)
         with cursor_db() as (_, cur):
             cur.execute(
                 """

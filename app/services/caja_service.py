@@ -1,6 +1,7 @@
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from app.db import cursor_db
+from app.services import dinero, NoEncontrado
 
 
 class CajaService:
@@ -8,25 +9,23 @@ class CajaService:
         with cursor_db() as (_, cur):
             cur.execute(
                 """
-                SELECT *
-                FROM caja
-                WHERE estado = 'abierta'
-                ORDER BY id DESC
+                SELECT c.*,
+                    c.saldo_inicial + COALESCE((
+                        SELECT SUM(CASE WHEN m.tipo = 'retiro' THEN -m.importe ELSE m.importe END)
+                        FROM movimientos_caja m WHERE m.caja_id = c.id
+                    ), 0) AS saldo_actual
+                FROM caja c
+                WHERE c.estado = 'abierta'
+                ORDER BY c.id DESC
                 LIMIT 1
                 """
             )
             return cur.fetchone()
 
     def abrir(self, saldo_inicial):
-        try:
-            saldo_inicial = Decimal(str(saldo_inicial))
-        except (InvalidOperation, TypeError):
-            raise ValueError("El saldo inicial no es valido.")
+        saldo_inicial = dinero(saldo_inicial, "Saldo inicial")
 
-        if saldo_inicial < 0:
-            raise ValueError("El saldo inicial no puede ser negativo.")
-
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 "SELECT id FROM caja WHERE estado = 'abierta' LIMIT 1"
             )
@@ -45,15 +44,9 @@ class CajaService:
             return caja_id
 
     def cerrar(self, caja_id, efectivo_contado):
-        try:
-            efectivo_contado = Decimal(str(efectivo_contado))
-        except (InvalidOperation, TypeError):
-            raise ValueError("El efectivo contado no es valido.")
+        efectivo_contado = dinero(efectivo_contado, "Efectivo contado")
 
-        if efectivo_contado < 0:
-            raise ValueError("El efectivo contado no puede ser negativo.")
-
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 """
                 SELECT *
@@ -66,7 +59,7 @@ class CajaService:
             caja = cur.fetchone()
 
             if not caja:
-                raise LookupError("Caja abierta no encontrada.")
+                raise NoEncontrado("Caja abierta no encontrada.")
 
             cur.execute(
                 """

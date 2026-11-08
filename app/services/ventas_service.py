@@ -1,8 +1,9 @@
 import hashlib
 import json
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from app.db import cursor_db
+from app.services import objeto, texto, entero, dinero, rango_fechas, NoEncontrado
 
 
 class VentaError(ValueError):
@@ -13,40 +14,43 @@ class VentasService:
     MEDIOS = {"efectivo", "transferencia", "tarjeta"}
 
     def crear(self, data):
-        if not isinstance(data, dict):
-            raise VentaError("Envia un objeto JSON valido.")
+        data = objeto(data)
+        items = data.get("items")
+        pagos = data.get("pagos")
+        solicitud_id = texto(data.get("solicitud_id"), "solicitud_id", 80)
+        caja_id = entero(data.get("caja_id"), "Caja")
+        if not isinstance(items, list) or not 1 <= len(items) <= 200:
+            raise VentaError("La venta requiere entre 1 y 200 items.")
+        if not isinstance(pagos, list) or not 1 <= len(pagos) <= 20:
+            raise VentaError("La venta requiere entre 1 y 20 pagos.")
+        agrupados = {}
+        for item in items:
+            objeto(item)
+            vid = entero(item.get("variante_id"), "Variante")
+            cantidad = entero(item.get("cantidad"), "Cantidad")
+            agrupados[vid] = entero(agrupados.get(vid, 0) + cantidad, "Cantidad total")
+        items = [{"variante_id": vid, "cantidad": qty} for vid, qty in sorted(agrupados.items())]
+        pagos_normalizados = []
+        for pago in pagos:
+            objeto(pago)
+            medio = texto(pago.get("medio"), "Medio de pago", 30).lower()
+            if medio not in self.MEDIOS:
+                raise VentaError("Medio de pago invalido.")
+            pagos_normalizados.append((medio, dinero(pago.get("importe"), "Importe", Decimal("0.01"))))
+        suma_pagos = dinero(sum((importe for _, importe in pagos_normalizados), Decimal(0)), "Total pagado")
+        efectivo_recibido = dinero(data.get("efectivo_recibido", 0), "Efectivo recibido")
+        efectivo_aplicado = sum((importe for medio, importe in pagos_normalizados if medio == "efectivo"), Decimal(0))
+        if efectivo_recibido < efectivo_aplicado:
+            raise VentaError("El efectivo recibido no alcanza para el pago en efectivo.")
+        cambio = efectivo_recibido - efectivo_aplicado if efectivo_aplicado else Decimal(0)
+        payload = json.dumps({
+            "items": items,
+            "pagos": [{"medio": medio, "importe": f"{importe:.2f}"} for medio, importe in pagos_normalizados],
+            "caja_id": caja_id, "efectivo_recibido": f"{efectivo_recibido:.2f}",
+        }, sort_keys=True, separators=(",", ":"))
+        contenido_hash = hashlib.sha256(payload.encode()).hexdigest()
 
-        items = data.get("items") or []
-        pagos = data.get("pagos") or []
-        solicitud_id = str(data.get("solicitud_id", "")).strip()
-
-        if not items:
-            raise VentaError("La venta debe tener al menos un producto.")
-        if not pagos:
-            raise VentaError("La venta debe incluir al menos un pago.")
-        if not solicitud_id:
-            raise VentaError("solicitud_id es obligatorio.")
-
-        try:
-            caja_id = int(data.get("caja_id", 0))
-        except (TypeError, ValueError):
-            caja_id = 0
-
-        if caja_id <= 0:
-            raise VentaError("La caja es obligatoria.")
-
-        with cursor_db() as (_, cur):
-            payload = json.dumps(
-                {
-                    "items": items,
-                    "pagos": pagos,
-                    "caja_id": caja_id,
-                },
-                sort_keys=True,
-                separators=(",", ":"),
-            )
-            contenido_hash = hashlib.sha256(payload.encode()).hexdigest()
-
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 """
                 SELECT solicitud_id, contenido_hash
@@ -74,7 +78,7 @@ class VentasService:
                     return {
                         "id": venta_existente["id"],
                         "total": f'{Decimal(venta_existente["total"]):.2f}',
-                        "cambio": "0.00",
+                        "cambio": f"{cambio:.2f}",
                         "repetida": True,
                     }
 
@@ -83,6 +87,7 @@ class VentasService:
                 SELECT id
                 FROM caja
                 WHERE id = %s AND estado = 'abierta'
+                FOR UPDATE
                 """,
                 (caja_id,),
             )
@@ -93,14 +98,8 @@ class VentasService:
             lineas = []
 
             for item in items:
-                try:
-                    variante_id = int(item.get("variante_id", 0))
-                    cantidad = int(item.get("cantidad", 0))
-                except (TypeError, ValueError):
-                    raise VentaError("Cada producto requiere una cantidad valida.")
-
-                if variante_id <= 0 or cantidad <= 0:
-                    raise VentaError("Cada producto requiere una cantidad positiva.")
+                variante_id = item["variante_id"]
+                cantidad = item["cantidad"]
 
                 cur.execute(
                     """
@@ -132,56 +131,9 @@ class VentasService:
                 total += subtotal
                 lineas.append((variante_id, cantidad, precio, subtotal))
 
-            pagos_normalizados = []
-            suma_pagos = Decimal("0.00")
-
-            for pago in pagos:
-                medio = str(pago.get("medio", "")).strip().lower()
-
-                try:
-                    importe = Decimal(str(pago.get("importe", "0")))
-                except (InvalidOperation, TypeError):
-                    raise VentaError("El importe de pago no es valido.")
-
-                if medio not in self.MEDIOS or importe <= 0:
-                    raise VentaError("Medio de pago o importe invalido.")
-
-                importe = importe.quantize(Decimal("0.01"))
-                suma_pagos += importe
-                pagos_normalizados.append((medio, importe))
-
+            total = dinero(total, "Total de venta", Decimal("0.01"))
             if suma_pagos != total:
-                raise VentaError(
-                    f"Los pagos deben sumar exactamente ${total:.2f}."
-                )
-
-            try:
-                efectivo_recibido = Decimal(
-                    str(data.get("efectivo_recibido", "0") or "0")
-                )
-            except (InvalidOperation, TypeError):
-                raise VentaError("El efectivo recibido no es valido.")
-
-            if efectivo_recibido < 0:
-                raise VentaError("El efectivo recibido no puede ser negativo.")
-
-            efectivo_aplicado = sum(
-                (
-                    importe
-                    for medio, importe in pagos_normalizados
-                    if medio == "efectivo"
-                ),
-                Decimal("0.00"),
-            )
-
-            if efectivo_aplicado > 0 and efectivo_recibido < efectivo_aplicado:
-                raise VentaError("El efectivo recibido no alcanza para el pago en efectivo.")
-
-            cambio = (
-                (efectivo_recibido - efectivo_aplicado).quantize(Decimal("0.01"))
-                if efectivo_aplicado > 0
-                else Decimal("0.00")
-            )
+                raise VentaError(f"Los pagos deben sumar exactamente ${total:.2f}.")
 
             medio_principal = (
                 pagos_normalizados[0][0]
@@ -288,7 +240,10 @@ class VentasService:
                 "repetida": False,
             }
 
-    def listar(self, desde=None, hasta=None, estado=None):
+    def listar(self, desde=None, hasta=None, estado=None, limite=None):
+        rango_fechas(desde, hasta)
+        if estado is not None and estado not in {"completada", "anulada"}:
+            raise VentaError("Estado de venta invalido.")
         sql = """
             SELECT
                 id,
@@ -315,6 +270,9 @@ class VentasService:
             args.append(estado)
 
         sql += " ORDER BY fecha_hora DESC, id DESC"
+        if limite is not None:
+            sql += " LIMIT %s"
+            args.append(entero(limite, "Limite", 1, 1000))
 
         with cursor_db() as (_, cur):
             cur.execute(sql, args)
@@ -378,11 +336,9 @@ class VentasService:
             return venta
 
     def anular(self, venta_id, motivo):
-        motivo = str(motivo or "").strip()
-        if not motivo:
-            raise VentaError("El motivo es obligatorio.")
+        motivo = texto(motivo, "Motivo", 255)
 
-        with cursor_db() as (_, cur):
+        with cursor_db(escritura=True) as (_, cur):
             cur.execute(
                 "SELECT * FROM ventas WHERE id = %s FOR UPDATE",
                 (venta_id,),
@@ -390,13 +346,18 @@ class VentasService:
             venta = cur.fetchone()
 
             if not venta:
-                raise LookupError("Venta no encontrada.")
+                raise NoEncontrado("Venta no encontrada.")
 
             if venta["estado"] == "anulada":
                 raise VentaError("La venta ya esta anulada.")
 
+            cur.execute("SELECT estado FROM caja WHERE id = %s FOR UPDATE", (venta["caja_id"],))
+            caja = cur.fetchone()
+            if not caja or caja["estado"] != "abierta":
+                raise VentaError("No se puede anular una venta de una caja cerrada.")
+
             cur.execute(
-                "SELECT variante_id, cantidad FROM detalle_venta WHERE venta_id = %s",
+                "SELECT variante_id, cantidad FROM detalle_venta WHERE venta_id = %s ORDER BY variante_id",
                 (venta_id,),
             )
             items = cur.fetchall()
@@ -438,13 +399,11 @@ class VentasService:
                 (motivo, venta_id),
             )
 
-            cur.execute(
-                """
-                UPDATE movimientos_caja
-                SET importe = 0
-                WHERE referencia = %s
-                """,
-                (f"Venta #{venta_id}",),
-            )
+            cur.execute("SELECT COALESCE(SUM(importe), 0) AS efectivo FROM pagos_venta WHERE venta_id = %s AND medio = 'efectivo'", (venta_id,))
+            efectivo = cur.fetchone()["efectivo"]
+            if efectivo:
+                cur.execute("""INSERT INTO movimientos_caja (caja_id, tipo, importe, referencia)
+                               VALUES (%s, 'retiro', %s, %s)""",
+                            (venta["caja_id"], efectivo, f"Anulacion venta #{venta_id}"))
 
             return True

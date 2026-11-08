@@ -2,8 +2,8 @@
   "name": "techflow-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Servidor HTTP minimo con Node.js",
+  "description": "TechFlow: aplicacion Flask de gestion de indumentaria",
   "scripts": {
-    "start": "node server.js"
+    "start": "python run.py"
   }
 }

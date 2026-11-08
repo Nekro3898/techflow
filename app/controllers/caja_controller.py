@@ -24,6 +24,6 @@ def cerrar(caja_id):
     data = request.get_json(silent=True) or {}
     resultado = service.cerrar(
         caja_id,
-        data.get("efectivo_contado", 0),
+        data.get("efectivo_contado"),
     )
     return jsonify({"datos": resultado})
