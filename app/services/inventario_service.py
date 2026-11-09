@@ -1,4 +1,5 @@
 from app.db import cursor_db
+from contextlib import nullcontext
 from app.services import entero, texto, NoEncontrado
 
 
@@ -45,12 +46,15 @@ class InventarioService:
         cantidad,
         motivo,
         diferencia=False,
+        cursor=None,
+        venta_id=None,
     ):
         variante_id = entero(variante_id, "Variante")
         cantidad = entero(cantidad, "Cantidad", 0 if tipo == "ajuste" else 1)
         motivo = texto(motivo, "Motivo", 180)
 
-        with cursor_db(escritura=True) as (_, cur):
+        # Posventa comparte la conexion y el rollback de su operacion completa.
+        with (nullcontext((None, cursor)) if cursor is not None else cursor_db(escritura=True)) as (_, cur):
             cur.execute(
                 "SELECT stock_actual FROM variantes WHERE id = %s FOR UPDATE",
                 (variante_id,),
@@ -103,15 +107,17 @@ class InventarioService:
                     variante_id,
                     tipo,
                     cantidad,
-                    motivo
+                    motivo,
+                    venta_id
                 )
-                VALUES (%s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     variante_id,
                     movimiento_tipo,
                     movimiento_cantidad,
                     motivo,
+                    venta_id,
                 ),
             )
 

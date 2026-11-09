@@ -119,3 +119,58 @@ contraseñas, `.venv`, respaldos o archivos `__pycache__`.
 Actualizar main, trabajar en una rama, probar los cambios y abrir un pull request
 con revisión de otro integrante. Acordar cambios de tablas o contratos con quienes
 los utilizan.
+
+
+## Posventa (revision del 9 de noviembre de 2026)
+
+Se mantienen las pantallas existentes. `GET /postventa` abre el historial de ventas;
+no necesita una plantilla adicional. El registro se realiza por JSON en
+`POST /api/postventa` o en la ruta compatible `POST /postventa/registrar`.
+Esta ultima tambien acepta formularios cuyos campos de items sean listas JSON.
+Ambas devuelven un comprobante JSON; no usan sesiones ni flash.
+
+Ejemplo de devolucion parcial (reemplazar los IDs por los de la venta real):
+
+```json
+{
+  "solicitud_id": "9bd1b091-38cb-4f55-a55e-6730109ea920",
+  "venta_id": 1,
+  "caja_id": 2,
+  "tipo": "devolucion",
+  "motivo": "Devolucion solicitada por el cliente",
+  "medio_pago": "efectivo",
+  "items_devueltos": [{"variante_id": 1, "cantidad": 1}]
+}
+```
+
+Para un cambio usar `tipo: "cambio"` y agregar `items_nuevos` con el mismo formato.
+El servidor usa el precio historico de los articulos originales y el precio actual
+de los nuevos. `diferencia_pago` es opcional: si se envia, debe coincidir con el
+importe calculado. Positivo significa cobrar; negativo, reintegrar; cero, cambio
+sin diferencia. El medio puede ser efectivo, transferencia o tarjeta (efectivo
+por defecto); solo efectivo afecta el saldo de caja. El registro no ejecuta cobros
+ni reintegros externos en bancos o tarjetas.
+
+Cada operacion requiere una solicitud_id nueva. Si se pierde la respuesta, repetir
+exactamente la misma solicitud con el mismo ID: devuelve el comprobante existente.
+Se limita lo devuelto a las unidades originales aun pendientes, incluso ante
+solicitudes simultaneas. Los articulos entregados en un cambio no amplian esa cuota
+original. No se permiten posventas de ventas anuladas ni anular una venta con posventa.
+Se usa una caja actualmente abierta; la caja original de la venta puede estar cerrada.
+Para un reintegro en efectivo debe haber saldo disponible en la caja actual.
+
+Los informes reflejan importes y unidades netos en la fecha de cada operacion;
+la cantidad de ventas conserva el numero de ventas originales. El promedio es el
+neto del periodo dividido por sus ventas (cero cuando no hubo ventas). El ranking
+puede incluir unidades negativas en periodos con devoluciones de ventas anteriores.
+
+### Actualizar una instalacion existente
+
+Ejecutar `sql/postventa.sql` sobre cada base seleccionada (techflow y, si se usa,
+techflow_demo) con un usuario administrador. Es aditivo y se puede repetir; crea
+`devoluciones`, `detalle_devolucion` y `solicitudes_postventa` sin borrar registros.
+No contiene USE para que respete la base seleccionada. La instalacion nueva y el
+SQL de demo ya incluyen las tres tablas. Las bases locales de este equipo ya se
+actualizaron, con respaldo previo y verificacion de que los datos existentes no cambiaron.
+Operaciones antiguas sin detalle requieren conciliacion; el sistema no inventa
+cantidades para permitir nuevas devoluciones sobre esas ventas.

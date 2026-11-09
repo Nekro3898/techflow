@@ -351,6 +351,10 @@ class VentasService:
             if venta["estado"] == "anulada":
                 raise VentaError("La venta ya esta anulada.")
 
+            cur.execute("SELECT id FROM devoluciones WHERE venta_id = %s LIMIT 1", (venta_id,))
+            if cur.fetchone():
+                raise VentaError("La venta tiene operaciones de posventa; no se puede anular nuevamente su stock e importe.")
+
             cur.execute("SELECT estado FROM caja WHERE id = %s FOR UPDATE", (venta["caja_id"],))
             caja = cur.fetchone()
             if not caja or caja["estado"] != "abierta":

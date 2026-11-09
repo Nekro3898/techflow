@@ -14,6 +14,7 @@ from app.controllers.inventario_controller import bp as inventario_bp
 from app.controllers.productos_controller import productos_bp
 from app.controllers.proveedores_controller import bp as proveedores_bp
 from app.controllers.ventas_controller import bp as ventas_bp
+from app.controllers.postventa_controller import postventa_bp
 
 
 def create_app():
@@ -49,6 +50,7 @@ def create_app():
     app.register_blueprint(ventas_bp)
     app.register_blueprint(caja_bp)
     app.register_blueprint(estadisticas_bp)
+    app.register_blueprint(postventa_bp)
 
     @app.errorhandler(ValueError)
     def validation(error):

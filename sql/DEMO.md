@@ -1,6 +1,6 @@
 # Base de demostración
 
-`techflow_demo` conserva la estructura de 13 tablas de `techflow`.
+`techflow_demo` conserva la estructura de 16 tablas de `techflow`.
 Los ejemplos ficticios abarcan del 25 de octubre al 7 de noviembre de 2026:
 
 - 12 productos, 48 variantes y 3 proveedores.
@@ -38,3 +38,8 @@ estructura. La revisión de código posterior utiliza bases temporales independi
 El 8 de noviembre se reconstruyó la tabla interna de permisos mysql.db de XAMPP,
 con respaldo previo, y se habilitó el usuario de aplicación para ambas bases.
 No se modificaron los datos comerciales de techflow ni techflow_demo.
+
+
+Actualizacion del 9 de noviembre: se agregaron las tres tablas de posventa con
+`postventa.sql`, sin alterar los registros existentes. El generador ya incluye
+esta estructura ampliada. Los ejemplos originales no se reimportaron.

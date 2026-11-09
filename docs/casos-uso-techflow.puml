@@ -1,0 +1,41 @@
+@startuml
+left to right direction
+title TechFlow - Casos de uso implementados
+actor "Operador de la tienda" as Operador
+rectangle "TechFlow" {
+  usecase "Consultar y cargar\nproductos" as Productos
+  usecase "Consultar inventario y\nregistrar ingresos/ajustes" as Inventario
+  usecase "Registrar venta" as Venta
+  usecase "Consultar historial\nde ventas" as Historial
+  usecase "Abrir y cerrar caja" as Caja
+  usecase "Consultar estadísticas" as Estadisticas
+  usecase "Anular venta" as Anular <<API>>
+  usecase "Gestionar cambio\no devolución" as Postventa <<API>>
+  usecase "Gestionar proveedores,\nvariantes y catálogos" as Catalogos <<API>>
+  usecase "Modificar o desactivar\nproducto" as Modificar <<API>>
+}
+Operador -- Productos
+Operador -- Inventario
+Operador -- Venta
+Operador -- Historial
+Operador -- Caja
+Operador -- Estadisticas
+Operador -- Anular
+Operador -- Postventa
+Operador -- Catalogos
+Operador -- Modificar
+note bottom of Venta
+  Precondición: caja abierta.
+  Valida cantidades, stock y pagos.
+  Registra venta y actualiza inventario/caja.
+end note
+note bottom of Postventa
+  <<API>> indica que la operación está
+  implementada en el servidor pero no
+  tiene una pantalla completa dedicada.
+end note
+note top of Operador
+  Rol de negocio, sin cuentas ni
+  permisos diferenciados implementados.
+end note
+@enduml

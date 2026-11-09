@@ -976,4 +976,8 @@ async function cargarStats() {
         cambiarSeccion("ventas");
     });
     cargarTodo();
+    const inicial = location.hash.slice(1);
+    if (["resumen", "puntoVenta", "productos", "inventario", "ventas", "caja", "estadisticas"].includes(inicial)) {
+        cambiarSeccion(inicial);
+    }
 })();
