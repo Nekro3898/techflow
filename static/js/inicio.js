@@ -141,6 +141,9 @@ function cambiarSeccion(tabId) {
     if (acciones[tabId]) {
         acciones[tabId]();
     }
+    if (tabId === "resumen") {
+        cargarTodo();
+    }
 }
 
 async function estado() {
@@ -444,40 +447,101 @@ function filtrarProductosPOS() {
     renderProductosPOS();
 }
 
+
 function renderProductosPOS() {
-    const search = ($( "#posBusqueda" )?.value || "").trim().toLowerCase();
+    const search = ($("#posBusqueda")?.value || "")
+        .trim()
+        .toLowerCase();
+
     const disponibles = inventarioPOS.filter((item) => {
-        if (number(item.stock_actual) <= 0) {
-            return false;
-        }
+        if (number(item.stock_actual) <= 0) return false;
 
-        if (!search) {
-            return true;
-        }
-
-        const text = [
+        const texto = [
             item.codigo,
             item.producto,
             item.talle,
-            item.color,
-        ]
-            .join(" ")
-            .toLowerCase();
+            item.color
+        ].join(" ").toLowerCase();
 
-        return text.includes(search);
+        return texto.includes(search);
     });
 
+    // Conservar el selector que utiliza el sistema actual
     $("#posProducto").innerHTML = disponibles.length
-        ? disponibles
-            .map((item) => `
-                <option value="${escapar(item.id)}">
-                    ${escapar(item.codigo)} · ${escapar(item.producto)} · ${escapar(item.talle)}/${escapar(item.color)}
-                    · ${money(item.precio)} · stock ${item.stock_actual}
-                </option>
-            `)
-            .join("")
-        : '<option value="">No hay productos disponibles</option>';
+        ? disponibles.map(item => `
+            <option value="${escapar(item.id)}">
+                ${escapar(item.codigo)} - ${escapar(item.producto)}
+            </option>
+        `).join("")
+        : '<option value="">Sin productos disponibles</option>';
+
+    $("#posCantidadProductos").textContent =
+        `${disponibles.length} productos`;
+
+    const catalogo = $("#posCatalogo");
+
+    if (!disponibles.length) {
+        catalogo.innerHTML = `
+            <div class="empty-state">
+                No hay productos disponibles.
+            </div>
+        `;
+        return;
+    }
+
+    catalogo.innerHTML = disponibles.map(item => `
+        <article class="pos-product-card">
+
+            <div class="pos-product-art">
+                <span>${escapar(
+                    String(item.producto || "P").charAt(0).toUpperCase()
+                )}</span>
+            </div>
+
+            <div class="pos-product-info">
+
+                <div class="pos-product-name">
+                    ${escapar(item.producto)}
+                </div>
+
+                <div class="pos-product-detail">
+                    ${escapar(item.codigo)} ·
+                    ${escapar(item.talle)}/${escapar(item.color)}
+                </div>
+
+                <div class="pos-product-stock">
+                    Stock disponible: ${number(item.stock_actual)}
+                </div>
+
+                <div class="pos-product-price">
+                    ${money(item.precio)}
+                </div>
+
+                <button
+                    class="pos-add-button"
+                    onclick="agregarProductoCatalogo(${Number(item.id)})"
+                    ${!cajaPOS || solicitudPOS || ventaEnCurso ? "disabled" : ""}
+                >
+                    + Agregar
+                </button>
+
+            </div>
+        </article>
+    `).join("");
 }
+
+
+
+function agregarProductoCatalogo(id) {
+    if (!cajaPOS || solicitudPOS || ventaEnCurso) return;
+
+    $("#posProducto").value = String(id);
+    $("#posCantidad").value = 1;
+
+    agregarAlCarrito();
+}
+
+
 
 function agregarAlCarrito() {
     if (ventaEnCurso || solicitudPOS) return;
@@ -968,16 +1032,17 @@ async function cargarStats() {
     const start = new Date(today);
     start.setDate(today.getDate() - 29);
 
-    $("#desde").value = fechaLocal(start);
-    $("#hasta").value = fechaLocal(today);
+    $("#desde").value = start.toISOString().slice(0, 10);
+    $("#hasta").value = today.toISOString().slice(0, 10);
 
-    document.querySelector('.link-ver-todo')?.addEventListener("click", (event) => {
-        event.preventDefault();
-        cambiarSeccion("ventas");
-    });
+    estado();
     cargarTodo();
-    const inicial = location.hash.slice(1);
-    if (["resumen", "puntoVenta", "productos", "inventario", "ventas", "caja", "estadisticas"].includes(inicial)) {
-        cambiarSeccion(inicial);
-    }
+
+    // Actualizar el panel cada 30 segundos
+    setInterval(() => {
+        if ($("#resumen").classList.contains("active")) {
+            cargarTodo();
+        }
+    }, 30000);
+
 })();

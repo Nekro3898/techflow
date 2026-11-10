@@ -11,7 +11,7 @@
   </head>
   <body>
     <nav class="navbar">
-      <a href="/" class="logo-container">
+      <a href="https://techflow-solutions-coronda.ceciliapierri15.chatgpt.site/"class="logo-container" target="_blank" rel="noopener noreferrer">
         <img
           src="{{ url_for('static', filename='assets/logo.png') }}"
           alt="TechFlow Solutions"
@@ -41,17 +41,13 @@
       <section id="resumen" class="tab active">
         <div class="hero">
           <div>
-            <p class="eyebrow">Panel principal</p>
-            <h1 class="titulo-pr">Todo en un solo lugar.</h1>
-            <p>
-              Productos, stock, ventas y caja conectados con la base de datos.
-            </p>
+              <p class="eyebrow">Panel principal</p>
+              <h1>Todo en un solo lugar.</h1>
+              <p>
+                  Productos, stock, ventas y caja conectados con la base de datos.
+              </p>
           </div>
-          <button class="primary" onclick="cargarTodo()">Actualizar</button>
-        </div>
-        <div class="cards" id="cards"></div>
-
-        <!-- PRUEBA  -->
+      </div>
 
       
         <!-- Tarjetas de Resumen -->
@@ -118,115 +114,115 @@
       </section>
 
       <section id="puntoVenta" class="tab">
-        <div class="sectionhead">
-          <div>
-            <p class="eyebrow">Cobros</p>
-            <h2>Punto de venta</h2>
-          </div>
-          <div id="posCaja" class="statusbox"></div>
+
+        <div class="pos-page-header">
+            <div>
+                <p class="eyebrow">GESTIÓN COMERCIAL</p>
+                <h2>Punto de venta</h2>
+                <p class="muted">Seleccioná productos para comenzar una venta.</p>
+            </div>
+            <div id="posCaja" class="statusbox"></div>
         </div>
 
-        <div class="pos-grid">
-          <div class="panel">
-            <div class="sectiontitle">
-              <div>
-                <h3>Agregar productos</h3>
-                <p class="muted">
-                  Busca una variante, indica la cantidad y agregala al carrito.
-                </p>
-              </div>
+        <div class="pos-layout">
+
+            <!-- CATÁLOGO DE PRODUCTOS -->
+            <div class="panel pos-catalog-panel">
+
+                <div class="pos-catalog-header">
+                    <div>
+                        <h3>Productos</h3>
+                        <p class="muted">Catálogo disponible para la venta</p>
+                    </div>
+                    <span id="posCantidadProductos" class="pos-count">
+                        0 productos
+                    </span>
+                </div>
+
+                <div class="pos-search">
+                    <span>⌕</span>
+                    <input
+                        id="posBusqueda"
+                        type="search"
+                        placeholder="Buscar producto, código, talle o color..."
+                        oninput="filtrarProductosPOS()"
+                    />
+                </div>
+
+                <div id="posCatalogo" class="pos-product-grid">
+                    <div class="empty-state">Cargando productos...</div>
+                </div>
+
+                <!-- Se conservan estos campos para el JavaScript existente -->
+                <select id="posProducto" class="hidden"></select>
+                <input id="posCantidad" type="hidden" value="1">
+
             </div>
 
-            <div class="pos-search">
-              <label>
-                Buscar producto
-                <input
-                  class="field"
-                  id="posBusqueda"
-                  type="search"
-                  placeholder="Nombre, codigo, talle o color"
-                  oninput="filtrarProductosPOS()"
-                />
-              </label>
+            <!-- PANEL DE VENTA -->
+            <div class="panel pos-sale-panel">
+
+                <div class="pos-sale-header">
+                    <div>
+                        <span class="pos-sale-icon">🛒</span>
+                        <h3>Venta actual</h3>
+                    </div>
+
+                    <button class="linkbtn" onclick="vaciarCarrito()">
+                        Vaciar
+                    </button>
+                </div>
+
+                <div id="posCarrito" class="cart pos-cart">
+                    <div class="empty-cart">
+                        Todavía no agregaste productos.
+                    </div>
+                </div>
+
+                <div id="posResumen" class="checkout-summary"></div>
+
+                <div class="payment-box">
+                    <div class="payment-head">
+                        <h3>Medios de pago</h3>
+                        <button class="linkbtn" onclick="agregarPago()">
+                            + Agregar
+                        </button>
+                    </div>
+
+                    <div id="posPagos"></div>
+
+                    <div class="cash-box hidden" id="posEfectivoBox">
+                        <label>
+                            Efectivo recibido
+                            <input
+                                class="field"
+                                id="posEfectivoRecibido"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                oninput="renderPos()"
+                            />
+                        </label>
+
+                        <div id="posCambio" class="change"></div>
+                    </div>
+                </div>
+
+                <div class="checkout-actions">
+                    <button
+                        class="primary pos-confirm-button"
+                        id="btnConfirmarVenta"
+                        onclick="confirmarCobro()"
+                    >
+                        Confirmar venta
+                    </button>
+                </div>
+
+                <div id="posResultado"></div>
+
             </div>
-
-            <div class="formgrid pos-form">
-              <label>
-                Producto / variante
-                <select class="field" id="posProducto"></select>
-              </label>
-              <label>
-                Cantidad
-                <input
-                  class="field"
-                  id="posCantidad"
-                  type="number"
-                  min="1"
-                  value="1"
-                />
-              </label>
-            </div>
-
-            <button class="primary" onclick="agregarAlCarrito()">
-              Agregar al carrito
-            </button>
-
-            <div id="posCarrito" class="cart"></div>
           </div>
-
-          <div class="panel pos-checkout">
-            <div class="sectiontitle">
-              <div>
-                <h3>Confirmar cobro</h3>
-                <p class="muted">
-                  El servidor vuelve a validar stock y montos antes de guardar.
-                </p>
-              </div>
-            </div>
-
-            <div id="posResumen" class="checkout-summary"></div>
-
-            <div class="payment-box">
-              <div class="payment-head">
-                <h3>Medios de pago</h3>
-                <button class="linkbtn" onclick="agregarPago()">
-                  + Agregar medio
-                </button>
-              </div>
-
-              <div id="posPagos"></div>
-
-              <div class="cash-box hidden" id="posEfectivoBox">
-                <label>
-                  Efectivo recibido
-                  <input
-                    class="field"
-                    id="posEfectivoRecibido"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    oninput="renderPos(false)"
-                  />
-                </label>
-                <div id="posCambio" class="change"></div>
-              </div>
-            </div>
-
-            <div class="checkout-actions">
-              <button onclick="vaciarCarrito()">Vaciar</button>
-              <button
-                class="primary"
-                id="btnConfirmarVenta"
-                onclick="confirmarCobro()"
-              >
-                Confirmar cobro
-              </button>
-            </div>
-
-            <div id="posResultado"></div>
-          </div>
-        </div>
-      </section>
+        </section>
 
       <section id="productos" class="tab">
         <div class="sectionhead">
