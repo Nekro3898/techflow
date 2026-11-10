@@ -2,6 +2,54 @@ from app.db import cursor_db
 
 
 class ProductosRepository:
+    def crear_con_variantes(self, producto, categoria_nueva, variantes):
+        # Producto, categoría, variantes y movimientos se confirman juntos.
+        with cursor_db(escritura=True) as (_, cur):
+            categoria_id = producto.get('categoria_id')
+            if categoria_nueva:
+                cur.execute('SELECT id FROM categorias WHERE nombre = %s', (categoria_nueva,))
+                existente = cur.fetchone()
+                if existente:
+                    categoria_id = existente['id']
+                else:
+                    cur.execute('INSERT INTO categorias(nombre) VALUES (%s)', (categoria_nueva,))
+                    categoria_id = cur.lastrowid
+            cur.execute('''INSERT INTO productos(nombre, descripcion, categoria_id, precio, activo)
+                VALUES (%s, %s, %s, %s, %s)''',
+                (producto['nombre'], producto.get('descripcion'), categoria_id, producto['precio'], producto.get('activo', True)))
+            producto_id = cur.lastrowid
+            # El bloqueo de escritura de cursor_db serializa la asignación entre procesos.
+            cur.execute("""SELECT COALESCE(MAX(CAST(SUBSTRING(codigo, 5) AS UNSIGNED)), 0) AS ultimo
+                FROM variantes WHERE codigo REGEXP '^SKU-[0-9]{1,18}$'""")
+            siguiente_sku = int(cur.fetchone()['ultimo']) + 1
+            combinaciones = set()
+            for fila in variantes:
+                for tabla, campo in [('talles', 'talle'), ('colores', 'color')]:
+                    if fila.get(campo):
+                        cur.execute(f'SELECT id FROM {tabla} WHERE nombre = %s', (fila[campo],))
+                        existente = cur.fetchone()
+                        if existente:
+                            fila[campo + '_id'] = existente['id']
+                        else:
+                            cur.execute(f'INSERT INTO {tabla}(nombre) VALUES (%s)', (fila[campo],))
+                            fila[campo + '_id'] = cur.lastrowid
+                combinacion = (fila['talle_id'], fila['color_id'])
+                if combinacion in combinaciones:
+                    raise ValueError('Hay talles o colores equivalentes repetidos en la grilla.')
+                combinaciones.add(combinacion)
+                if siguiente_sku > 999999999999999999:
+                    raise ValueError('Se agotó el rango de códigos SKU automáticos.')
+                codigo = f"SKU-{siguiente_sku:07d}"
+                siguiente_sku += 1
+                cur.execute('''INSERT INTO variantes(producto_id,talle_id,color_id,codigo,stock_actual,stock_minimo)
+                    VALUES (%s,%s,%s,%s,%s,%s)''',
+                    (producto_id, fila['talle_id'], fila['color_id'], codigo, fila['stock'], fila['minimo']))
+                variante_id = cur.lastrowid
+                if fila['stock']:
+                    cur.execute('''INSERT INTO movimientos_stock(variante_id,tipo,cantidad,motivo)
+                        VALUES (%s,'ingreso',%s,'Stock inicial de carga por grilla')''', (variante_id, fila['stock']))
+            return producto_id
+
     def listar_productos(self, busqueda="", incluir_inactivos=False):
         sql = """
             SELECT

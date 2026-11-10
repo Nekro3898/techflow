@@ -58,6 +58,33 @@ class ProductosService:
     def modificar(self, producto_id, data):
         return self.repo.modificar_producto(producto_id, self.validar_campos(data))
 
+    def crear_con_variantes(self, data):
+        data = objeto(data)
+        categoria = texto(data.get('categoria_nueva'), 'Nueva categoría', 100, True)
+        producto = self.validar_campos(data.get('producto'))
+        if not {'nombre', 'precio'} <= producto.keys() or (not categoria and not producto.get('categoria_id')):
+            raise ErrorValidacion('Nombre, precio y categoría son obligatorios.')
+        if categoria and producto.get('categoria_id'):
+            raise ErrorValidacion('Elegí una categoría existente o una nueva.')
+        filas = data.get('variantes')
+        if not isinstance(filas, list) or not 1 <= len(filas) <= 200:
+            raise ErrorValidacion('Completá entre 1 y 200 combinaciones de talle y color.')
+        variantes, vistas = [], set()
+        for fila in filas:
+            fila = objeto(fila)
+            talle = texto(fila.get('talle'), 'Talle', 40) if 'talle' in fila else entero(fila.get('talle_id'), 'Talle')
+            color = texto(fila.get('color'), 'Color', 60) if 'color' in fila else entero(fila.get('color_id'), 'Color')
+            if (talle, color) in vistas:
+                raise ErrorValidacion('Hay combinaciones de talle y color repetidas.')
+            vistas.add((talle, color))
+            variantes.append({'talle_id': talle if isinstance(talle, int) else None,
+                'color_id': color if isinstance(color, int) else None,
+                'talle': talle if isinstance(talle, str) else None,
+                'color': color if isinstance(color, str) else None,
+                'stock': entero(fila.get('stock'), 'Stock inicial', 0),
+                'minimo': entero(fila.get('stock_minimo', 0), 'Stock mínimo', 0)})
+        return self.repo.crear_con_variantes(producto, categoria, variantes)
+
     def desactivar(self, producto_id):
         return self.repo.desactivar_producto(producto_id)
 

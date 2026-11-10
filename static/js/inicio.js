@@ -91,7 +91,11 @@ function table(headers, rows) {
         ? rows
             .map((row) => `
                 <tr>
-                    ${row.map((cell) => `<td>${cell && typeof cell === "object"
+                    ${row.map((cell) => `<td>${cell && typeof cell === "object" && cell.editarProducto
+                        ? `<button type="button" onclick="modificarProducto(${Number(cell.editarProducto)})">Modificar</button>`
+                        : cell && typeof cell === "object" && cell.imagenProducto
+                        ? `<button type="button" onclick="cargarImagenExistente(${Number(cell.imagenProducto)})">Cargar imagen</button>`
+                        : cell && typeof cell === "object"
                         ? `<span class="${["ok", "bad", "warn"].includes(cell.clase) ? cell.clase : ""}">${escapar(cell.texto)}</span>`
                         : escapar(cell)}</td>`).join("")}
                 </tr>
@@ -113,6 +117,43 @@ function table(headers, rows) {
             <tbody>${body}</tbody>
         </table>
     `;
+}
+
+const paginasTablas = {};
+function tablaPaginada(selector, headers, rows, filtro = "") {
+    const anterior = paginasTablas[selector];
+    paginasTablas[selector] = {
+        headers, rows, filtro,
+        pagina: anterior?.filtro === filtro ? anterior.pagina : 1,
+    };
+    mostrarPaginaTabla(selector, paginasTablas[selector].pagina);
+}
+
+function mostrarPaginaTabla(selector, pagina) {
+    const estado = paginasTablas[selector];
+    const total = estado.rows.length;
+    const paginas = Math.max(1, Math.ceil(total / 20));
+    estado.pagina = Math.max(1, Math.min(pagina, paginas));
+    const inicio = (estado.pagina - 1) * 20;
+    const panel = $(selector);
+    panel.innerHTML = table(estado.headers, estado.rows.slice(inicio, inicio + 20)) + `
+        <nav class="paginacion-tabla" aria-label="Paginación de ${selector === '#tablaVentas' ? 'ventas' : 'inventario'}">
+            <span role="status">${total ? inicio + 1 : 0}–${Math.min(inicio + 20, total)} de ${total} registros · Página ${estado.pagina} de ${paginas}</span>
+            <div>
+                <button type="button" data-paso="-1" ${estado.pagina === 1 ? 'disabled' : ''}>Anterior</button>
+                <button type="button" data-paso="1" ${estado.pagina === paginas ? 'disabled' : ''}>Siguiente</button>
+            </div>
+        </nav>`;
+    panel.querySelectorAll('[data-paso]').forEach((button) => {
+        button.onclick = () => {
+            const paso = Number(button.dataset.paso);
+            mostrarPaginaTabla(selector, estado.pagina + paso);
+            panel.scrollIntoView({ block: 'start' });
+            const controles = panel.querySelectorAll('[data-paso]');
+            const preferido = panel.querySelector(`[data-paso="${paso}"]`);
+            (preferido.disabled ? [...controles].find((item) => !item.disabled) : preferido)?.focus({ preventScroll: true });
+        };
+    });
 }
 
 $$('.navbtn').forEach((button) => {
@@ -216,12 +257,14 @@ async function cargarProductos() {
 
         if (version !== busquedaProductos) return;
         $("#tablaProductos").innerHTML = table(
-            ["Producto", "Categoria", "Precio", "Estado"],
+            ["Producto", "Categoria", "Precio", "Estado", "Imagen", "Acciones"],
             data.datos.map((item) => [
                 item.nombre,
                 item.categoria,
                 money(item.precio),
                 { texto: item.activo ? "Activo" : "Inactivo", clase: item.activo ? "ok" : "bad" },
+                { imagenProducto: item.id },
+                { editarProducto: item.id },
             ])
         );
     } catch (error) {
@@ -229,8 +272,63 @@ async function cargarProductos() {
     }
 }
 
+let versionFormularioProducto = 0;
+async function modificarProducto(id) {
+    if (formulariosEnCurso.has('guardarProducto') || formulariosEnCurso.has('modificarProducto')) return;
+    const version = ++versionFormularioProducto;
+    try {
+        const [respuesta, categorias] = await Promise.all([api(`/api/productos/${Number(id)}`), api('/api/categorias')]);
+        if (version !== versionFormularioProducto) return;
+        const producto = respuesta.datos;
+        const form = $('#formProducto');
+        delete form.dataset.productoCreado;
+        form.classList.remove('hidden');
+        form.innerHTML = `
+            <h3>Modificar producto</h3>
+            <div class="formgrid">
+                <label>Nombre<input id="editarNombre" class="field" maxlength="150" value="${escapar(producto.nombre)}"></label>
+                <label>Precio<input id="editarPrecio" class="field" type="number" min="0.01" step="0.01" value="${escapar(producto.precio)}"></label>
+                <label>Categoría<select id="editarCategoria" class="field">${categorias.datos.map(c => `<option value="${Number(c.id)}" ${Number(c.id) === Number(producto.categoria_id) ? 'selected' : ''}>${escapar(c.nombre)}</option>`).join('')}</select></label>
+                <label>Descripción<textarea id="editarDescripcion" class="field">${escapar(producto.descripcion || '')}</textarea></label>
+            </div>
+            <label><input id="editarActivo" type="checkbox" ${producto.activo ? 'checked' : ''}> Producto activo</label>
+            <p>El nuevo precio se aplica a futuras ventas. Los SKU, las variantes, el stock y las ventas anteriores se conservan.</p>
+            <p id="editarMensaje" role="status"></p>
+            <div class="formactions">
+                <button id="editarGuardar" class="primary" type="button" onclick="guardarCambiosProducto(${Number(id)})">Guardar cambios</button>
+                <button id="editarCancelar" type="button" onclick="$('#formProducto').classList.add('hidden')">Cancelar</button>
+            </div>`;
+        form.scrollIntoView({block:'start', behavior:'smooth'});
+    } catch (error) { toast(error.message); }
+}
+
+async function guardarCambiosProducto(id) {
+    if (formulariosEnCurso.has('modificarProducto')) return;
+    formulariosEnCurso.add('modificarProducto');
+    const controles = [...$('#formProducto').querySelectorAll('input, select, textarea, button')];
+    const datos = {nombre: $('#editarNombre').value, precio: $('#editarPrecio').value,
+        categoria_id: $('#editarCategoria').value, descripcion: $('#editarDescripcion').value,
+        activo: $('#editarActivo').checked};
+    controles.forEach(control => {control.disabled = true;});
+    try {
+        await api(`/api/productos/${Number(id)}`, {method:'PATCH', body:JSON.stringify(datos)});
+        $('#formProducto').classList.add('hidden');
+        toast('Producto modificado');
+        await cargarProductos();
+    } catch (error) {
+        $('#editarMensaje').textContent = error.message;
+        toast(error.message);
+    } finally {
+        controles.forEach(control => {control.disabled = false;});
+        formulariosEnCurso.delete('modificarProducto');
+    }
+}
+
 function mostrarProducto() {
+    if (formulariosEnCurso.has('guardarProducto') || formulariosEnCurso.has('modificarProducto')) return;
+    const version = ++versionFormularioProducto;
     const form = $("#formProducto");
+    delete form.dataset.productoCreado;
     form.classList.remove("hidden");
     form.innerHTML = `
         <h3>Nuevo producto</h3>
@@ -245,50 +343,173 @@ function mostrarProducto() {
             </label>
             <label>
                 Categoria
-                <select id="pc" class="field"></select>
+                <select id="pc" class="field" onchange="$('#categoriaNuevaBox').classList.toggle('hidden', this.value !== 'nueva')"></select>
+            </label>
+            <label id="categoriaNuevaBox" class="hidden">
+                Nueva categoría
+                <input class="field" id="pcNueva" maxlength="100" placeholder="Nombre de la categoría">
             </label>
             <label>
                 Descripcion
                 <input class="field" id="pd">
             </label>
         </div>
+        <label>Imagen del producto (opcional)
+            <input id="pi" type="file" accept="image/png,image/jpeg,image/webp" onchange="previsualizarImagenProducto()">
+        </label>
+        <div id="previewProducto" class="hidden" aria-live="polite">
+            <img id="previewProductoFoto" alt="Vista previa de la imagen del producto" style="display:block;max-width:220px;max-height:180px;object-fit:contain;margin:12px 0;border-radius:8px">
+            <p id="previewProductoNombre"></p>
+            <button type="button" onclick="$('#pi').value = ''; previsualizarImagenProducto();">Quitar imagen</button>
+        </div>
+        <h4>Variantes por talle y color</h4>
+        <div class="formgrid">
+            <label>Talles de este producto (separados por coma)
+                <input id="pTalles" class="field" placeholder="S, M, L / 38, 40 / Único / Especial">
+            </label>
+            <label>Colores de este producto (separados por coma)
+                <input id="pColores" class="field" placeholder="Negro, Blanco, Azul marino">
+            </label>
+        </div>
+        <p>Podés usar letras, números, calzado (ej. 38.5), talle único o cualquier nombre especial. Solo se usarán los talles y colores que escribas.</p>
+        <button type="button" onclick="try { actualizarGrillaProducto(); } catch(error) { toast(error.message); }">Armar / actualizar grilla</button>
+        <p>Escribí el stock inicial en cada combinación. Dejá vacías las que no vendés; usá 0 para crear una variante sin stock.</p>
+        <label>Stock mínimo por variante <input id="pMinimo" type="number" min="0" step="1" value="0"></label>
+        <div id="grillaVariantes" class="grilla-variantes">Escribí tus talles y colores y presioná Armar grilla.</div>
         <div class="formactions">
-            <button class="primary" onclick="guardarProducto()">Guardar</button>
+            <button id="guardarProductoBtn" class="primary" onclick="guardarProducto()" disabled>Guardar producto y variantes</button>
             <button onclick="$(\'#formProducto\').classList.add(\'hidden\')">Cancelar</button>
         </div>
     `;
 
+    form.scrollIntoView({block: 'start', behavior: 'smooth'});
     api("/api/categorias")
         .then((data) => {
+            if (version !== versionFormularioProducto) return;
             $("#pc").innerHTML = data.datos
                 .map((item) => `<option value="${escapar(item.id)}">${escapar(item.nombre)}</option>`)
-                .join("");
+                .join("") + '<option value="nueva">+ Crear nueva categoría</option>';
+            $('#categoriaNuevaBox').classList.toggle('hidden', $('#pc').value !== 'nueva');
+            $('#guardarProductoBtn').disabled = false;
         })
         .catch((error) => toast(error.message));
+}
+
+function actualizarGrillaProducto() {
+    if ($('#formProducto').dataset.productoCreado) return;
+    const lista = (selector, limite) => {
+        const valores = $(selector).value.split(',').map(v => v.trim()).filter(Boolean);
+        if (!valores.length || valores.some(v => v.length > limite)) throw new Error(`Ingresá nombres de hasta ${limite} caracteres para talles y colores.`);
+        if (new Set(valores.map(v => v.toLocaleLowerCase())).size !== valores.length) throw new Error('No repitas talles ni colores.');
+        return valores;
+    };
+    const talles = lista('#pTalles', 40), colores = lista('#pColores', 60);
+    if (talles.length * colores.length > 200) throw new Error('La grilla admite hasta 200 combinaciones.');
+    const anteriores = new Map($$('#grillaVariantes input').map(input => [JSON.stringify([input.dataset.talle, input.dataset.color]), input.value]));
+    const claves = new Set(colores.flatMap(c => talles.map(t => JSON.stringify([t, c]))));
+    if ([...anteriores].some(([clave, valor]) => valor !== '' && !claves.has(clave))) {
+        throw new Error('Para quitar un talle o color, vaciá primero sus cantidades en la grilla.');
+    }
+    $('#grillaVariantes').innerHTML = `<table class="table"><thead><tr><th>Color / Talle</th>${talles.map(t => `<th scope="col">${escapar(t)}</th>`).join('')}</tr></thead><tbody>${colores.map(c => `<tr><th scope="row">${escapar(c)}</th>${talles.map(t => `<td><input class="stock-grilla" type="number" min="0" max="2147483647" step="1" placeholder="—" value="${escapar(anteriores.get(JSON.stringify([t,c])) || '')}" data-talle="${escapar(t)}" data-color="${escapar(c)}" aria-label="Stock ${escapar(c)} talle ${escapar(t)}"></td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 
 async function guardarProducto() {
     if (formulariosEnCurso.has("guardarProducto")) return;
     formulariosEnCurso.add("guardarProducto");
+    $('#guardarProductoBtn').disabled = true;
     try {
-        await api("/api/productos", {
+        if (!$('#formProducto').dataset.productoCreado) actualizarGrillaProducto();
+        const imagen = $("#pi").files[0] ? await prepararImagen($("#pi").files[0]) : null;
+        const form = $("#formProducto");
+        const producto = {nombre: $('#pn').value, precio: $('#pp').value, descripcion: $('#pd').value};
+        if ($('#pc').value !== 'nueva') producto.categoria_id = $('#pc').value;
+        const variantes = $$('#grillaVariantes input').filter(input => input.value !== '').map(input => ({
+            talle: input.dataset.talle, color: input.dataset.color, stock: input.value, stock_minimo: $('#pMinimo').value,
+        }));
+        const resultado = form.dataset.productoCreado ? {id: Number(form.dataset.productoCreado)} : await api("/api/productos/carga", {
             method: "POST",
             body: JSON.stringify({
-                nombre: $("#pn").value,
-                precio: $("#pp").value,
-                categoria_id: $("#pc").value,
-                descripcion: $("#pd").value,
+                producto, variantes, categoria_nueva: $('#pc').value === 'nueva' ? $('#pcNueva').value : null,
             }),
         });
+        form.dataset.productoCreado = resultado.id;
+        // Si falla solo la foto, el reintento no crea otro producto ni variantes.
+        form.querySelectorAll('input:not([type="file"]), select').forEach(input => { input.disabled = true; });
+        if (imagen) await guardarImagenProducto(resultado.id, imagen);
 
         toast("Producto guardado");
         $("#formProducto").classList.add("hidden");
         cargarProductos();
     } catch (error) {
-        toast(error.message);
+        toast($('#formProducto').dataset.productoCreado ? `Producto y variantes guardados. No se pudo guardar la foto: ${error.message}. Reintentá Guardar.` : error.message);
     } finally {
         formulariosEnCurso.delete("guardarProducto");
+        $('#guardarProductoBtn').disabled = false;
     }
+}
+
+let versionPreviewProducto = 0;
+async function previsualizarImagenProducto() {
+    const version = ++versionPreviewProducto;
+    const selector = $('#pi');
+    const archivo = selector.files[0];
+    $('#previewProducto').classList.add('hidden');
+    $('#previewProductoFoto').removeAttribute('src');
+    if (!archivo) return;
+    try {
+        const contenido = await prepararImagen(archivo);
+        if (version !== versionPreviewProducto || selector !== $('#pi')) return;
+        $('#previewProductoFoto').src = `data:image/jpeg;base64,${contenido}`;
+        $('#previewProductoNombre').textContent = archivo.name;
+        $('#previewProducto').classList.remove('hidden');
+    } catch (error) {
+        if (version !== versionPreviewProducto || selector !== $('#pi')) return;
+        selector.value = '';
+        toast(error.message);
+    }
+}
+
+async function prepararImagen(archivo) {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type) || archivo.size > 10 * 1024 * 1024) {
+        throw new Error('Elegí una imagen JPG, PNG o WebP de hasta 10 MB.');
+    }
+    const bitmap = await createImageBitmap(archivo);
+    try {
+        const escala = Math.min(1, 1000 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * escala));
+        canvas.height = Math.max(1, Math.round(bitmap.height * escala));
+        const contexto = canvas.getContext('2d');
+        contexto.fillStyle = '#ffffff';
+        contexto.fillRect(0, 0, canvas.width, canvas.height);
+        contexto.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const contenido = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        if (contenido.length > 930000) throw new Error('La imagen es demasiado grande. Elegí una más pequeña.');
+        return contenido;
+    } finally { bitmap.close(); }
+}
+
+async function guardarImagenProducto(id, imagen) {
+    await api(`/api/productos/${Number(id)}/imagen`, {method: 'POST', body: JSON.stringify({imagen})});
+}
+
+function cargarImagenExistente(id) {
+    const selector = document.createElement('input');
+    selector.type = 'file';
+    selector.accept = 'image/png,image/jpeg,image/webp';
+    selector.onchange = async () => {
+        if (!selector.files[0]) return;
+        try {
+            await guardarImagenProducto(id, await prepararImagen(selector.files[0]));
+            toast('Imagen guardada');
+            await cargarPuntoVenta();
+        } catch (error) { toast(error.message); }
+    };
+    selector.click();
+}
+
+function fotoProducto(id, nombre, clase = '') {
+    return `<img class="foto-producto ${clase}" src="/api/productos/${Number(id)}/imagen" alt="${escapar(nombre)}" loading="lazy">`;
 }
 
 async function cargarInventario() {
@@ -299,7 +520,7 @@ async function cargarInventario() {
         const data = await api(`/api/inventario?q=${query}${bajo}`);
 
         if (version !== busquedaInventario) return;
-        $("#tablaInventario").innerHTML = table(
+        tablaPaginada("#tablaInventario",
             ["Codigo", "Producto", "Talle", "Color", "Stock", "Minimo"],
             data.datos.map((item) => [
                 item.codigo,
@@ -310,7 +531,7 @@ async function cargarInventario() {
                     ? { texto: item.stock_actual, clase: "warn" }
                     : item.stock_actual,
                 item.stock_minimo,
-            ])
+            ]), query + bajo
         );
     } catch (error) {
         toast(error.message);
@@ -377,7 +598,7 @@ async function guardarMovimiento() {
 async function cargarVentas() {
     try {
         const data = await api("/api/ventas");
-        $("#tablaVentas").innerHTML = table(
+        tablaPaginada("#tablaVentas",
             ["ID", "Fecha", "Total", "Pago", "Estado"],
             data.datos.map((item) => [
                 item.id,
@@ -493,9 +714,7 @@ function renderProductosPOS() {
         <article class="pos-product-card">
 
             <div class="pos-product-art">
-                <span>${escapar(
-                    String(item.producto || "P").charAt(0).toUpperCase()
-                )}</span>
+                ${fotoProducto(item.producto_id, item.producto)}
             </div>
 
             <div class="pos-product-info">
@@ -575,6 +794,7 @@ function agregarAlCarrito() {
     } else {
         carritoPOS.push({
             variante_id: variantId,
+            producto_id: item.producto_id,
             cantidad: quantity,
             nombre: item.producto,
             detalle: `${item.codigo} · ${item.talle}/${item.color}`,
@@ -709,6 +929,7 @@ function renderPos(actualizarFilas = true) {
             ${carritoPOS.map((item, index) => `
                 <div class="cart-row">
                     <div class="cart-product">
+                        ${fotoProducto(item.producto_id || inventarioPOS.find(v => number(v.id) === item.variante_id)?.producto_id, item.nombre, 'foto-carrito')}
                         <strong>${escapar(item.nombre)}</strong>
                         <span>${escapar(item.detalle)}</span>
                     </div>
@@ -980,7 +1201,36 @@ async function cerrarCaja(id) {
     }
 }
 
+function dibujarGraficoVentas(filas) {
+    const panel = $('#graficoVentas');
+    const titulo = '<h3>Facturación neta por día</h3><p>Importes en pesos, con cambios y devoluciones descontados. Se muestran los días con movimientos.</p>';
+    if (!filas.length) {
+        panel.innerHTML = titulo + '<p class="mensaje-vacio">No hay movimientos en el período seleccionado.</p>';
+        return;
+    }
+    const valores = filas.map(f => Number(f.total));
+    const minimo = Math.min(0, ...valores), maximo = Math.max(0, ...valores);
+    const rango = maximo - minimo || 1;
+    const ancho = Math.max(800, filas.length * 38 + 110);
+    const y = valor => 30 + (maximo - valor) / rango * 230;
+    const paso = (ancho - 110) / filas.length;
+    const fecha = f => String(f).slice(0, 10).split('-').reverse().join('/');
+    const ejes = Array.from({length:5}, (_, i) => {
+        const valor = maximo - rango * i / 4;
+        return `<line x1="100" x2="${ancho - 10}" y1="${y(valor)}" y2="${y(valor)}" stroke="#e2e8f0"/><text x="92" y="${y(valor)+4}" text-anchor="end" font-size="11" fill="#64748b">${escapar(Number(valor.toFixed(0)).toLocaleString('es-AR'))}</text>`;
+    }).join('');
+    panel.innerHTML = titulo + `<div class="grafico-scroll"><svg role="img" aria-label="Facturación neta diaria en pesos" viewBox="0 0 ${ancho} 330" style="width:100%;min-width:${ancho}px;height:auto">${ejes}
+        <line x1="100" x2="${ancho-10}" y1="${y(0)}" y2="${y(0)}" stroke="#94a3b8"/>
+        ${filas.map((f,i) => {
+            const valor = Number(f.total), x = 100 + i * paso + paso * .15;
+            return `<rect tabindex="0" aria-label="${escapar(fecha(f.fecha))}: ${escapar(money(valor))}" x="${x}" y="${Math.min(y(valor),y(0))}" width="${paso*.7}" height="${Math.max(1,Math.abs(y(valor)-y(0)))}" rx="3" fill="${valor < 0 ? '#dc2626' : '#2563eb'}"><title>${escapar(fecha(f.fecha))}: ${escapar(money(valor))} · ${escapar(f.ventas)} ventas</title></rect><text transform="translate(${x+paso*.35},280) rotate(-40)" text-anchor="end" font-size="11" fill="#64748b">${escapar(fecha(f.fecha))}</text>`;
+        }).join('')}</svg></div><details><summary>Ver datos del gráfico</summary>${table(['Fecha','Ventas','Facturación neta'], filas.map(f => [fecha(f.fecha),f.ventas,money(f.total)]))}</details>`;
+}
+
+let versionStats = 0;
 async function cargarStats() {
+    const version = ++versionStats;
+    $('#graficoVentas').textContent = 'Cargando gráfico…';
     try {
         const desde = $("#desde").value;
         const hasta = $("#hasta").value;
@@ -995,7 +1245,13 @@ async function cargarStats() {
         }
 
         const query = params.toString() ? `?${params}` : "";
-        const data = await api(`/api/estadisticas/resumen${query}`);
+        const [data, ranking, serie] = await Promise.all([
+            api(`/api/estadisticas/resumen${query}`),
+            api(`/api/estadisticas/productos${query}`),
+            api(`/api/estadisticas/ventas-por-dia${query}`),
+        ]);
+        if (version !== versionStats) return;
+        dibujarGraficoVentas(serie.datos);
 
         $("#statsCards").innerHTML = [
             ["Ventas", data.datos.ventas],
@@ -1010,7 +1266,6 @@ async function cargarStats() {
             `)
             .join("");
 
-        const ranking = await api(`/api/estadisticas/productos${query}`);
         $("#ranking").innerHTML = `
             <h3>Productos mas vendidos</h3>
             ${table(
@@ -1023,6 +1278,10 @@ async function cargarStats() {
             )}
         `;
     } catch (error) {
+        if (version !== versionStats) return;
+        $('#graficoVentas').textContent = 'No se pudo cargar el gráfico. Revisá las fechas y volvé a consultar.';
+        $('#statsCards').innerHTML = '';
+        $('#ranking').innerHTML = '';
         toast(error.message);
     }
 }

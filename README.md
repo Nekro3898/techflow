@@ -174,3 +174,16 @@ SQL de demo ya incluyen las tres tablas. Las bases locales de este equipo ya se
 actualizaron, con respaldo previo y verificacion de que los datos existentes no cambiaron.
 Operaciones antiguas sin detalle requieren conciliacion; el sistema no inventa
 cantidades para permitir nuevas devoluciones sobre esas ventas.
+
+### Imágenes de productos
+
+En Productos, el formulario Nuevo producto admite una imagen opcional. El botón
+Cargar imagen de cada fila permite agregar o reemplazar la foto de un producto existente.
+Se aceptan JPG, PNG y WebP de hasta 10 MB; el navegador reduce la imagen antes de enviarla.
+El servidor vuelve a validar el contenido y guarda una copia PNG de hasta 1000 x 1000 píxeles.
+Las imágenes aparecen en el catálogo del punto de venta y en el carrito.
+
+Se almacenan en instance/imagenes_productos, separadas por conexión y base de datos.
+Al trasladar o respaldar la aplicación, copiar también esa carpeta: un respaldo SQL
+no incluye las fotos. No se cambió la estructura de las tablas. Instalar las dependencias
+actualizadas con python -m pip install -r requirements.txt (incluye Pillow).

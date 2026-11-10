@@ -1,4 +1,13 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app, send_file, Response
+from pathlib import Path
+from io import BytesIO
+import base64
+import binascii
+import hashlib
+import os
+import uuid
+from PIL import Image, ImageOps, UnidentifiedImageError
+from app.db import config_db
 
 try:
     from mysql.connector import Error as MySQLError
@@ -11,6 +20,43 @@ from app.services.productos_service import ErrorValidacion, ProductosService
 
 productos_bp = Blueprint("productos", __name__, url_prefix="/api")
 service = ProductosService()
+
+
+@productos_bp.route('/productos/<int:producto_id>/imagen', methods=['GET', 'POST'])
+def imagen_producto(producto_id):
+    # Separar archivos por conexión/base para no mezclar la demo y la aplicación.
+    config = config_db()
+    clave = hashlib.sha256(f"{config['host']}:{config['port']}:{config['database']}".encode()).hexdigest()
+    carpeta = Path(current_app.instance_path) / 'imagenes_productos' / clave
+    destino = carpeta / f'{producto_id}.png'
+    if request.method == 'GET':
+        if destino.is_file():
+            return send_file(BytesIO(destino.read_bytes()), mimetype='image/png', max_age=0)
+        return Response('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="100%" height="100%" fill="#eef2f7"/><text x="50%" y="50%" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="16">Sin imagen</text></svg>', mimetype='image/svg+xml', headers={'Cache-Control': 'no-store'})
+    if not service.repo.obtener_producto(producto_id):
+        return jsonify({'error': 'Producto no encontrado.'}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        contenido = base64.b64decode(data.get('imagen', ''), validate=True)
+        if not contenido or len(contenido) > 700000:
+            raise ValueError('La imagen debe ocupar menos de 700 KB.')
+        with Image.open(BytesIO(contenido)) as original:
+            if original.format not in {'PNG', 'JPEG', 'WEBP'} or original.width * original.height > 16000000:
+                raise ValueError('Usá una imagen PNG, JPG o WebP de hasta 16 megapíxeles.')
+            imagen = ImageOps.exif_transpose(original).convert('RGB')
+            imagen.thumbnail((1000, 1000))
+            salida = BytesIO()
+            imagen.save(salida, format='PNG')
+    except (binascii.Error, TypeError, UnidentifiedImageError, OSError, Image.DecompressionBombError) as error:
+        raise ValueError('El archivo no es una imagen válida.') from error
+    carpeta.mkdir(parents=True, exist_ok=True)
+    temporal = carpeta / f'{uuid.uuid4().hex}.tmp'
+    try:
+        temporal.write_bytes(salida.getvalue())
+        os.replace(temporal, destino)
+    finally:
+        temporal.unlink(missing_ok=True)
+    return jsonify({'mensaje': 'Imagen guardada.'})
 
 
 @productos_bp.errorhandler(ErrorValidacion)
@@ -49,6 +95,12 @@ def crear():
         "id": producto_id,
         "mensaje": "Producto creado.",
     }), 201
+
+
+@productos_bp.post('/productos/carga')
+def crear_con_variantes():
+    producto_id = service.crear_con_variantes(request.get_json(silent=True))
+    return jsonify({'id': producto_id, 'mensaje': 'Producto y variantes guardados.'}), 201
 
 
 @productos_bp.get("/productos/<int:producto_id>")
