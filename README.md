@@ -13,8 +13,7 @@ python run.py
 ```
 
 Abrir http://127.0.0.1:5000. `npm start` ejecuta el mismo servidor Flask.
-Para detenerlo, presionar Ctrl+C. `server.js` se conserva como ejemplo histórico
-independiente; no es el servidor de la aplicación.
+Para detenerlo, presionar Ctrl+C.
 
 Para trabajar con un entorno virtual:
 
@@ -65,7 +64,6 @@ Abrir http://127.0.0.1:5001. El lanzador no modifica `.env` y usa el usuario
 - `app/controllers/`: rutas HTTP y respuestas JSON.
 - `app/services/`: validaciones y reglas de negocio.
 - `app/repositories/`: acceso a productos, variantes, catálogos y proveedores.
-- `app/models/producto.py`: clases del dominio.
 - `app/db.py`: conexión, transacciones y coordinación de escrituras.
 - `templates/index.html`: la interfaz existente.
 - `static/css/estilos.css` y `static/js/inicio.js`: estilos y comportamiento.

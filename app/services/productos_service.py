@@ -13,14 +13,6 @@ class ProductosService:
         self.repo = ProductosRepository()
 
     @staticmethod
-    def validar_data(data):
-        return objeto(data)
-
-    @staticmethod
-    def nombre(data):
-        return texto(objeto(data).get("nombre"), "Nombre", 150)
-
-    @staticmethod
     def precio(value):
         return dinero(value, "Precio", Decimal("0.01"))
 

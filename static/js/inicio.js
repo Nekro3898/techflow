@@ -208,22 +208,11 @@ async function estado() {
 async function cargarTodo() {
     const hoy = fechaLocal();
     try {
-        const [data, today, cash, sales] = await Promise.all([
-            api("/api/estadisticas/resumen"),
+        const [today, cash, sales] = await Promise.all([
             api(`/api/estadisticas/resumen?desde=${hoy}&hasta=${hoy}`),
             api("/api/caja/actual"),
             api(`/api/ventas?desde=${hoy}&hasta=${hoy}&limite=8`),
         ]);
-        $("#cards").innerHTML = [
-            ["Ventas (ultimos 30 dias)", data.datos.ventas],
-            ["Facturacion (ultimos 30 dias)", money(data.datos.total)],
-            ["Promedio", money(data.datos.promedio)],
-            ["Estado", "Operativo"],
-        ].map(([label, value], index) => `
-            <div class="card">
-                <div class="label">${escapar(label)}</div>
-                <div class="value" ${index === 3 ? 'id="estado"' : ""}>${escapar(value)}</div>
-            </div>`).join("");
         $("#ventasHoy").textContent = today.datos.ventas;
         $("#totalHoy").textContent = money(today.datos.total);
         $("#productosVendidos").textContent = today.datos.unidades;
@@ -240,7 +229,6 @@ async function cargarTodo() {
         });
         $("#estadoCaja").textContent = "Datos no disponibles";
         $("#ultimasVentas").textContent = "No se pudieron cargar las ventas.";
-        $("#cards").innerHTML = '<div class="card"><div class="label">Estado</div><div class="value" id="estado">Datos no disponibles</div></div>';
         toast(error.message);
     }
     await estado();
@@ -1086,7 +1074,10 @@ async function confirmarCobro() {
         $("#posEfectivoRecibido").value = "";
         renderPos();
         toast(`Venta #${sale.id} registrada`);
-        await Promise.all([cargarPuntoVenta(), cargarVentas(), cargarInventario(), cargarTodo()]);
+        const actualizaciones = await Promise.allSettled([cargarPuntoVenta(), cargarVentas(), cargarInventario(), cargarTodo()]);
+        if (actualizaciones.some(resultado => resultado.status === 'rejected')) {
+            toast(`Venta #${sale.id} confirmada. No se pudo actualizar algún panel; recargá la página.`);
+        }
     } catch (error) {
         if ([400, 404, 409, 413, 422].includes(error.status)) {
             localStorage.removeItem(claveSolicitud);

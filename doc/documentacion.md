@@ -28,7 +28,6 @@ techflow_final/
 │   │   ├── productos_controller.py
 │   │   ├── proveedores_controller.py
 │   │   └── ventas_controller.py
-│   ├── models/
 │   ├── repositories/
 │   │   └── productos_repository.py
 │   ├── services/

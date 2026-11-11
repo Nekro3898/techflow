@@ -99,27 +99,6 @@ classDiagram
         +inventario_service : InventarioService
         +registrar_operacion(data)
     }
-    class Producto {
-        +nombre : str
-        +categoria_id : int
-        +precio : Decimal
-        +descripcion : Optional~str~
-        +activo : bool
-        +id : Optional~int~
-    }
-    class Variante {
-        +producto_id : int
-        +talle_id : int
-        +color_id : int
-        +codigo : str
-        +stock_actual : int
-        +stock_minimo : int
-        +id : Optional~int~
-    }
-    class Catalogo {
-        +nombre : str
-        +id : Optional~int~
-    }
     class ValueError
     class ErrorValidacion
     class VentaError
@@ -129,9 +108,6 @@ classDiagram
     ValueError <|-- ErrorValidacion
     ValueError <|-- VentaError
     ValueError <|-- PostventaError
-    note for Producto "Dataclass declarada; no utilizada por el flujo actual"
-    note for Variante "Referencias mediante IDs; no contiene un objeto Producto"
-    note for Catalogo "Dataclass declarada; no utilizada por el flujo actual"
 ```
 
 Se simplificó la firma de `InventarioService.movimiento`: también admite `diferencia`, `cursor` y `venta_id`. Los controladores son módulos con funciones y Blueprints, no clases propias. `cursor_db` es una función/context manager: no debe dibujarse como una clase inventada. Tampoco corresponde presentar las tablas ventas y caja como clases Python inexistentes.
@@ -226,7 +202,7 @@ Dependencias declaradas: Flask 3.1.3, mysql-connector-python 9.5.0 y python-dote
 
 XAMPP es un paquete de herramientas, no un lenguaje. Apache no es necesario para ejecutar este proyecto con Flask. El panel puede estar cerrado mientras MariaDB sigue activo.
 
-`server.js` contiene un servidor Node de ejemplo que muestra «Servidor Node activo». **No ejecuta la lógica de TechFlow.** El comando `npm start` de `package.json` lanza `python run.py`. No presentar Node ni Express como backend principal; tampoco hay React ni un ORM como SQLAlchemy en el flujo actual.
+El comando npm start lanza python run.py. El backend es Flask; no se utiliza Node, Express, React ni un ORM como SQLAlchemy.
 
 ## 7. POO: cómo, cuándo y por qué
 
@@ -245,7 +221,7 @@ Cuándo ocurre: al importar el controlador se instancia su servicio. Al crear un
 
 Por qué se usa: permite agrupar responsabilidades, reutilizar operaciones, localizar validaciones y separar el acceso a datos de ciertas decisiones de negocio. Tener una clase no garantiza por sí solo un buen diseño POO.
 
-`models/producto.py` declara las dataclasses `Producto`, `Variante` y `Catalogo`, pero **el flujo actual no las importa ni las instancia**: las consultas devuelven diccionarios. No afirmar que cada fila SQL se convierte en uno de estos objetos. Una dataclass genera métodos como `__init__` y `__repr__`, pero no es un ORM.
+Las consultas devuelven diccionarios. Las dataclasses sin uso se retiraron durante la limpieza; la POO se implementa en servicios y repositorios.
 
 Frase para exponer: «Aplicamos POO principalmente en servicios y repositorios, donde creamos objetos con métodos y responsabilidades concretas. La implementación es mixta: también usa funciones y diccionarios. La herencia aparece en excepciones y no tenemos una jerarquía polimórfica de entidades del negocio.»
 
@@ -309,10 +285,8 @@ techflow/
 │   │   ├── caja_service.py          Apertura, cierre y conciliación.
 │   │   ├── estadisticas_service.py  Consultas agregadas, incluida posventa.
 │   │   └── postventa.py             Cambios, devoluciones y diferencias.
-│   ├── repositories/
-│   │   └── productos_repository.py SQL de productos y catálogos/proveedores.
-│   └── models/
-│       └── producto.py             Dataclasses declaradas, no integradas.
+│   └── repositories/
+│       └── productos_repository.py SQL de productos y catálogos/proveedores.
 ├── templates/
 │   └── index.html                  Estructura de las pantallas.
 ├── static/
@@ -332,7 +306,6 @@ techflow/
 ├── requirements.txt                Dependencias Python.
 ├── .env.example                    Ejemplo de configuración; no es código.
 ├── package.json                    npm start ejecuta Python.
-├── server.js                       Servidor Node de ejemplo independiente.
 └── README.md                       Instrucciones generales.
 ```
 
@@ -362,6 +335,6 @@ Para la demostración usar `techflow_demo`, iniciar MariaDB y ejecutar `python r
 
 **¿Qué pasa si falla la base a mitad de una venta?** La operación se ejecuta en una transacción: se confirma completa o se revierte. El identificador de solicitud ayuda a evitar duplicados al reintentar.
 
-**¿Qué faltaría mejorar?** Completar pantallas para las operaciones disponibles solo por API, integrar o retirar los modelos sin uso, uniformar la separación de capas y revisar redundancias del esquema. Autenticación y roles serían una ampliación para uso con distintos usuarios.
+**¿Qué faltaría mejorar?** Completar pantallas para las operaciones disponibles solo por API, uniformar la separación de capas y revisar redundancias del esquema. Autenticación y roles serían una ampliación para uso con distintos usuarios.
 
 **¿Es MVC puro, POO completa y 3FN estricta?** No conviene afirmarlo. Es una implementación funcional basada en MVC, con POO en servicios/repositorios y normalización con excepciones documentadas. Poder señalar estas decisiones y límites forma parte de una buena defensa técnica.

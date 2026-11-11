@@ -1,0 +1,13 @@
+# Cachés generadas por Python
+__pycache__/
+*.py[cod]
+
+# Entornos y configuración local
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Fotos cargadas por el usuario: respaldar por separado, no son código.
+instance/
