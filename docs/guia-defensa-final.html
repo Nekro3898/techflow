@@ -1,0 +1,399 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TechFlow · Guía de defensa</title><style>body{font:18px/1.65 Segoe UI,Arial,sans-serif;color:#172554;max-width:1050px;margin:auto;padding:40px}h1,h2,h3{line-height:1.2}h1{font-size:40px}h2{border-bottom:2px solid #2563eb;padding-bottom:12px;margin-top:48px}table{border-collapse:collapse;width:100%;font-size:15px}td,th{padding:10px;text-align:left;border-bottom:1px solid #ccd7ea}th{background:#eff6ff}pre{background:#eff6ff;padding:18px;overflow:auto}code{overflow-wrap:anywhere}svg{width:100%;height:auto}button{padding:12px;background:#1d4ed8;color:white;border:0;border-radius:8px;cursor:pointer}@media print{button{display:none}body{font-size:11pt;padding:0}h2,h3{break-after:avoid}tr,svg{break-inside:avoid}svg{max-height:180mm}table{font-size:9pt}@page{margin:18mm}}</style><button onclick="window.print()">Imprimir / guardar como PDF</button><h1 id="techflow-guia-de-defensa-final">TechFlow — Guía de defensa final</h1>
+<p>Preparación para Ingeniería de Software, Base de Datos y Programación. Referencia: 11/11/2026.</p>
+<h2 id="como-usar-el-material">Cómo usar el material</h2>
+<p>Abrir TechFlow y elegir <strong>Presentación</strong>. Flechas para navegar, N para notas, F para pantalla completa. El índice permite saltar a cualquier tema. <strong>Descargar HTML</strong> crea una copia autónoma con los diagramas y la captura incluidos. <strong>Imprimir / PDF</strong> permite guardar las diapositivas desde el navegador. La copia HTML también se entrega como <code>TechFlow-presentacion.html</code>.</p>
+<p>El recorrido principal ocupa 28 diapositivas cortas y deja dos anexos de consulta. Ensayar 20–25 minutos de explicación más 5 minutos de demostración; ajustar el tiempo a lo indicado por el docente. Las notas son apoyo para hablar, no texto para leer literalmente.</p>
+<h2 id="preparacion-del-equipo">Preparación del equipo</h2>
+<ul>
+<li>Completar oralmente integrantes y contribuciones reales; no inventar roles ni una metodología formal.</li>
+<li>Cada integrante debe poder seguir una operación desde JavaScript hasta SQL.</li>
+<li>Iniciar MariaDB y <code>python run_demo.py</code>; abrir http://127.0.0.1:5001.</li>
+<li>Revisar caja abierta y stock disponible. Las ventas de la exposición modifican la demo.</li>
+<li>Guardar copia SQL y la carpeta <code>instance/imagenes_productos</code>. El SQL no incluye fotos.</li>
+<li>Llevar el HTML autónomo como respaldo. Para mostrar las diapositivas no se necesita MySQL.</li>
+<li>Reconocer la asistencia de IA y poder explicar el código que se presenta.</li>
+</ul>
+<h2 id="guion-diapositiva-por-diapositiva">Guion diapositiva por diapositiva</h2>
+<h3 id="01-techflow">01. TechFlow</h3>
+<p>Presentar a los integrantes y explicar el problema del negocio. Esta defensa se centra en la implementación actual, no en atribuir tecnologías que solo se estudiaron. Duración sugerida: 20–25 minutos más demostración. Fecha de referencia: 11 de noviembre de 2026.</p>
+<p><strong>Código o evidencia:</strong> <code>Proyecto TechFlow</code>.</p>
+<h3 id="02-una-tienda-varios-datos-conectados">02. Una tienda, varios datos conectados</h3>
+<p>Ejemplo: vender una remera negra talle M no debe descontar una blanca talle L. El objetivo es sustituir registros dispersos por operaciones relacionadas y verificables.</p>
+<p><strong>Código o evidencia:</strong> <code>templates/index.html · sql/techflow.sql</code>.</p>
+<h3 id="03-que-permite-hacer-techflow">03. Qué permite hacer TechFlow</h3>
+<p>Aclarar que posventa está implementada en el servidor pero no tiene pantalla propia. No se implementaron usuarios, roles ni autorización. No es una tienda en línea ni una pasarela bancaria: registra pagos.</p>
+<p><strong>Código o evidencia:</strong> <code>app/controllers/ · templates/index.html</code>.</p>
+<h3 id="04-recorrido-del-desarrollo">04. Recorrido del desarrollo</h3>
+<p>Es una síntesis del recorrido observable en el repositorio y en las mejoras del proyecto; no una cronología con fechas o autorías inventadas. Git conserva cambios del equipo. Mostrar git log y un diff real. Las mejoras fueron iterativas, sin afirmar que se aplicó Scrum formalmente.</p>
+<p><strong>Código o evidencia:</strong> <code>Git: 3d5a79d, fc07aa9, 3ac8868, c0548a5 · docs/</code>.</p>
+<h3 id="05-diagrama-de-casos-de-uso">05. Diagrama de casos de uso</h3>
+<p>El actor es quien interactúa con el sistema. El cliente compra en la tienda, pero no opera esta interfaz. La base de datos no se representa como actor de negocio. Los casos de uso describen objetivos, no botones ni tablas. No hay include entre abrir caja y cada venta: caja abierta es una precondición. El diagrama completo editable también se conserva en docs/casos-uso-techflow.puml.</p>
+<p><strong>Código o evidencia:</strong> <code>app/controllers/ · docs/casos-uso-techflow.puml</code>.</p>
+<h3 id="06-caso-de-uso-registrar-una-venta">06. Caso de uso: registrar una venta</h3>
+<p>El flujo feliz no es suficiente. Si se pierde la respuesta después de guardar, el reintento utiliza el mismo identificador para no repetir el cobro. Si falla la transacción, se revierten los cambios. El cierre de caja no debe mezclarse con una venta concurrente.</p>
+<p><strong>Código o evidencia:</strong> <code>app/services/ventas_service.py: crear · static/js/inicio.js: confirmarCobro</code>.</p>
+<h3 id="07-lo-aprendido-y-lo-aplicado">07. Lo aprendido y lo aplicado</h3>
+<p>No es necesario incorporar todas las tecnologías para demostrar que se conocen. Tkinter crea interfaces de escritorio; HTML/CSS/JS permiten acceso desde navegador. React es una biblioteca de interfaces, Vite una herramienta de desarrollo y construcción, Node un entorno de ejecución de JavaScript. PHP puede procesar solicitudes en servidor. La aplicación elegida usa Flask. npm start solo lanza Python.</p>
+<p><strong>Código o evidencia:</strong> <code>requirements.txt · package.json · run.py · templates/index.html</code>.</p>
+<h3 id="08-tecnologias-elegidas">08. Tecnologías elegidas</h3>
+<p>Distinguir lenguaje, biblioteca, framework y motor de base de datos. HTML es marcado; CSS estilos; JSON es un formato de intercambio. Flask utiliza Jinja para entregar la plantilla inicial. No se utiliza un ORM: el SQL está escrito explícitamente.</p>
+<p><strong>Código o evidencia:</strong> <code>requirements.txt · app/db.py · app/controllers/productos_controller.py</code>.</p>
+<h3 id="09-modelo-vista-y-controlador">09. Modelo, vista y controlador</h3>
+<p>MVC separa presentación, coordinación de solicitudes y estado/reglas. Facilita mantenimiento y cambios localizados. Esta arquitectura se basa en MVC con capas adicionales. Algunos servicios contienen SQL y proveedores valida en el controlador: la separación no es uniforme ni MVC puro. La respuesta vuelve hacia la vista.</p>
+<p><strong>Código o evidencia:</strong> <code>app/controllers/productos_controller.py · app/services/productos_service.py · app/repositories/productos_repository.py</code>.</p>
+<h3 id="10-un-producto-atraviesa-las-capas">10. Un producto atraviesa las capas</h3>
+<p>Mostrar el endpoint en el controlador y abrir el método del servicio. El servicio valida nombre, precio, combinaciones y cantidades. El repositorio guarda categoría, producto, variantes y stock inicial en una transacción. La foto se sube en una solicitud separada: no afirmar que el archivo y SQL son una única transacción.</p>
+<p><strong>Código o evidencia:</strong> <code>app/controllers/productos_controller.py: crear_con_variantes · app/repositories/productos_repository.py: crear_con_variantes</code>.</p>
+<h3 id="11-objetos-que-colaboran">11. Objetos que colaboran</h3>
+<p>Fragmento del código actual, con salto de línea para legibilidad. Clase define estructura/comportamiento; objeto es una instancia; método es una operación. Se crea el servicio al importar el controlador y su constructor crea el repositorio. Encapsulación aquí significa agrupar responsabilidades, no atributos privados estrictos.</p>
+<p><strong>Código o evidencia:</strong> <code>app/services/productos_service.py · app/controllers/productos_controller.py: service = ProductosService()</code>.</p>
+<h3 id="12-donde-se-aplica-poo-y-hasta-donde-llega">12. Dónde se aplica POO y hasta dónde llega</h3>
+<p>Explicar por qué sirve: cambios más localizados, reutilización y responsabilidades comprensibles. No afirmar que usar clases implica cumplir todos los principios de diseño. No hay clases de dominio Producto/Variante integradas: las dataclasses sin uso se eliminaron. El tratamiento de excepciones permite manejar subtipos; no hay jerarquía de pagos con implementaciones intercambiables.</p>
+<p><strong>Código o evidencia:</strong> <code>app/services/productos_service.py · postventa.py · inventario_service.py · ventas_service.py</code>.</p>
+<h3 id="13-diagrama-de-clases-de-implementacion">13. Diagrama de clases de implementación</h3>
+<p>UML no es solamente un diagrama de tablas: incluye clases, casos de uso y secuencia. Estas son clases reales, con métodos seleccionados. Los módulos de controladores y la función cursor_db no se dibujan como clases inexistentes. Otras clases reales: CajaService, VentasService y EstadisticasService.</p>
+<p><strong>Código o evidencia:</strong> <code>app/services/ · app/repositories/productos_repository.py</code>.</p>
+<h3 id="14-por-que-una-base-relacional">14. Por qué una base relacional</h3>
+<p>No decir que NoSQL carece siempre de relaciones o transacciones: depende del motor. MySQL y MariaDB son motores distintos relacionados; en esta instalación XAMPP provee MariaDB. XAMPP es el paquete que facilita iniciar servicios, no una base ni un lenguaje.</p>
+<p><strong>Código o evidencia:</strong> <code>sql/techflow.sql · app/db.py</code>.</p>
+<h3 id="15-relaciones-principales">15. Relaciones principales</h3>
+<p>PK identifica una fila; FK referencia otra tabla. Una venta contiene varias líneas y varios pagos. Categoría y proveedor no se repiten como textos en cada línea vendida. Talles y colores se reutilizan. El diagrama expresa relaciones principales, no todas las columnas ni cardinalidades mínimas.</p>
+<p><strong>Código o evidencia:</strong> <code>sql/techflow.sql</code>.</p>
+<h3 id="16-producto-variante-y-sku">16. Producto, variante y SKU</h3>
+<p>Se guarda en variantes.codigo con UNIQUE. La carga por grilla genera el siguiente SKU a partir del mayor existente con ese formato, dentro de un bloqueo de escritura. No es una columna AUTO_INCREMENT separada. No prometer secuencia sin huecos ni no reutilización tras borrados manuales. Dos unidades iguales comparten SKU.</p>
+<p><strong>Código o evidencia:</strong> <code>app/repositories/productos_repository.py: crear_con_variantes · sql/techflow.sql: variantes</code>.</p>
+<h3 id="17-primera-y-segunda-forma-normal">17. Primera y segunda forma normal</h3>
+<p>Tener un id no basta para demostrar 2FN: revisar todas las claves candidatas. Variantes tiene id, código y la combinación de tres claves. Bajo las dependencias del negocio actual, stock/minimo dependen de la variante completa. El precio actual se guarda en productos. El esquema trabaja en 1FN y 2FN según esas reglas.</p>
+<p><strong>Código o evidencia:</strong> <code>sql/techflow.sql: UNIQUE KEY uq_variante</code>.</p>
+<h3 id="18-tercera-forma-normal-limites-reales">18. Tercera forma normal: límites reales</h3>
+<p>Definición formal: para X→A no trivial, X es superclave o A es atributo primo. Cantidad/precio determinan subtotal sin identificar la fila: excepción concreta. Los agregados entre tablas no prueban por sí solos violación formal de 3FN, pero exigen consistencia. En devoluciones también se repite la variante del detalle de origen. Guardar precio histórico no es un error: representa otro hecho temporal.</p>
+<p><strong>Código o evidencia:</strong> <code>sql/techflow.sql: detalle_venta, caja, detalle_devolucion</code>.</p>
+<h3 id="19-una-venta-se-guarda-completa">19. Una venta se guarda completa</h3>
+<p>Es pseudocódigo del recorrido, no un fragmento literal completo. Atomicidad: todo o nada. Consistencia: reglas y restricciones. Aislamiento: READ COMMITTED y bloqueo de escrituras por base, además de SELECT FOR UPDATE donde corresponde. Durabilidad: depende del motor/configuración de persistencia; no equivale a respaldo. Serializar escrituras prioriza consistencia en esta escala, con costo de concurrencia.</p>
+<p><strong>Código o evidencia:</strong> <code>app/db.py: cursor_db · app/services/ventas_service.py: crear</code>.</p>
+<h3 id="20-carga-de-productos-y-variantes">20. Carga de productos y variantes</h3>
+<p>Mostrar Nuevo producto sin guardar datos de prueba innecesarios. Una celda vacía no crea variante; cero crea variante sin stock. Se reutilizan catálogos existentes y se rechazan combinaciones duplicadas. El producto y variantes son transaccionales. No afirmar que Modificar permite editar toda la grilla: esa pantalla modifica campos generales.</p>
+<p><strong>Código o evidencia:</strong> <code>static/js/inicio.js: mostrarProducto, actualizarGrillaProducto, guardarProducto, modificarProducto</code>.</p>
+<h3 id="21-imagenes-historial-y-estadisticas">21. Imágenes, historial y estadísticas</h3>
+<p>Las imágenes no son BLOBs en SQL: se guardan en instance/imagenes_productos, separadas por conexión/base e ID de producto. La paginación actual es del lado del navegador: la API aún entrega todos los registros. El gráfico SVG funciona sin bibliotecas externas y muestra días con movimientos. Las estadísticas descuentan anulaciones y consideran diferencias de posventa.</p>
+<p><strong>Código o evidencia:</strong> <code>app/controllers/productos_controller.py: imagen_producto · static/js/inicio.js: tablaPaginada, dibujarGraficoVentas</code>.</p>
+<h3 id="22-la-informacion-vuelve-al-negocio">22. La información vuelve al negocio</h3>
+<p>El gráfico permite comparar días; no predice ventas futuras. Mostrar filtros, una barra y la tabla alternativa. La captura es evidencia de la interfaz, no un reporte actualizado de producción.</p>
+<p><strong>Código o evidencia:</strong> <code>Captura local de TechFlow · static/js/inicio.js: cargarStats</code>.</p>
+<h3 id="23-mapa-de-carpetas">23. Mapa de carpetas</h3>
+<p>Recorrer la estructura en el editor. No abrir ni proyectar credenciales. No hay carpeta models funcional: se retiraron clases sin uso. Modelo en MVC es un rol arquitectónico, no el nombre obligatorio de una carpeta. El anexo de la guía enumera cada archivo fuente.</p>
+<p><strong>Código o evidencia:</strong> <code>Árbol del repositorio revisado el 11/11/2026</code>.</p>
+<h3 id="24-como-arranca-y-se-comunica">24. Cómo arranca y se comunica</h3>
+<p>Apache no participa en este arranque. Cerrar el panel XAMPP no siempre detiene el servicio. La presentación puede abrirse como archivo HTML independiente sin Flask; para operar ventas se necesitan Flask y la base. No crear otra base llamada posventa: postventa.sql agrega tablas a la base seleccionada.</p>
+<p><strong>Código o evidencia:</strong> <code>run.py · run_demo.py · app/__init__.py · app/db.py</code>.</p>
+<h3 id="25-pruebas-y-correcciones">25. Pruebas y correcciones</h3>
+<p>Se usaron pruebas con Flask test_client, scripts de regresión, bases temporales y recorridos en navegador. Hubo una ejecución de 141 comprobaciones de negocio antes de mejoras posteriores; no presentarla como certificación exhaustiva de cada cambio actual. Los tests son evidencia de escenarios, no garantía de perfección. Mostrar casos concretos y mensajes de rechazo sin alterar datos reales.</p>
+<p><strong>Código o evidencia:</strong> <code>docs/revision-2026-11-08.md · app/services/ · pruebas de desarrollo</code>.</p>
+<h3 id="26-como-trabajamos-y-que-aprendimos">26. Cómo trabajamos y qué aprendimos</h3>
+<p>La asistencia de IA formó parte del trabajo en este chat. No atribuir toda la implementación manual a una persona ni inventar reparto de tareas. Cada integrante debe explicar los módulos que conoce y completar oralmente su contribución real. Si el docente pregunta por metodología, hablar de iteración y control de versiones observables; no inventar ceremonias ágiles.</p>
+<p><strong>Código o evidencia:</strong> <code>Historial Git y proceso de revisión del proyecto</code>.</p>
+<h3 id="27-recorrido-en-vivo">27. Recorrido en vivo</h3>
+<p>Usar la demo. La venta de la exposición sí modifica sus registros. Ensayar con caja abierta y stock disponible. Antes de confirmar, avisar que es una operación de demostración. Llevar el HTML descargado como respaldo si no arranca la app. No cambiar ni regenerar la base durante la exposición.</p>
+<p><strong>Código o evidencia:</strong> <code>run_demo.py · interfaz de TechFlow</code>.</p>
+<h3 id="28-alcance-y-proximas-mejoras">28. Alcance y próximas mejoras</h3>
+<p>Cerrar relacionando las tres materias: programación construye el comportamiento, base de datos conserva relaciones e integridad, ingeniería organiza requisitos y responsabilidades. No afirmar listo para producción ni 3FN estricta completa. Dejar tiempo para preguntas.</p>
+<p><strong>Código o evidencia:</strong> <code>Código y alcance actual</code>.</p>
+<h3 id="29-las-16-tablas-y-su-funcion">29. Las 16 tablas y su función</h3>
+<p>Solicitudes permiten identificar operaciones y prevenir duplicación. solicitudes_venta no tiene FK explícita hacia ventas: la relación se mantiene por lógica. Posventa guarda detalle de lo devuelto/nuevo y no borra la venta original. Las 16 tablas no incluyen archivos de imágenes.</p>
+<p><strong>Código o evidencia:</strong> <code>sql/techflow.sql</code>.</p>
+<h3 id="30-preguntas-para-la-defensa">30. Preguntas para la defensa</h3>
+<p>Practicar respuestas con ejemplos, no definiciones aisladas. Para normalización, abrir detalle_venta y explicar subtotal y precio histórico. Para MVC, seguir una ruta desde JS hasta SQL. Para SKU, distinguir código de variante e ID interno.</p>
+<p><strong>Código o evidencia:</strong> <code>Guía de defensa y código del proyecto</code>.</p>
+<h2 id="inventario-de-archivos-y-responsabilidades">Inventario de archivos y responsabilidades</h2>
+<table>
+<thead>
+<tr>
+<th>Archivo</th>
+<th>Función</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/__init__.py</code></td>
+<td>Crea Flask, registra Blueprints, serializa fechas y maneja errores HTTP/SQL.</td>
+</tr>
+<tr>
+<td><code>app/db.py</code></td>
+<td>Lee configuración, conecta con MariaDB y controla commit, rollback y bloqueo de escritura.</td>
+</tr>
+<tr>
+<td><code>app/controllers/__init__.py</code></td>
+<td>Compatibilidad: delega en la fábrica create_app principal.</td>
+</tr>
+<tr>
+<td><code>app/controllers/inicio_controller.py</code></td>
+<td>Entrega la aplicación, el estado y la presentación/descargas.</td>
+</tr>
+<tr>
+<td><code>app/controllers/productos_controller.py</code></td>
+<td>API de productos, carga por grilla, catálogos, variantes e imágenes.</td>
+</tr>
+<tr>
+<td><code>app/controllers/proveedores_controller.py</code></td>
+<td>API y validación de proveedores.</td>
+</tr>
+<tr>
+<td><code>app/controllers/inventario_controller.py</code></td>
+<td>Consultas de existencias, ingresos y ajustes.</td>
+</tr>
+<tr>
+<td><code>app/controllers/ventas_controller.py</code></td>
+<td>Registro, historial, detalle y anulación de ventas.</td>
+</tr>
+<tr>
+<td><code>app/controllers/caja_controller.py</code></td>
+<td>Caja actual, apertura y cierre.</td>
+</tr>
+<tr>
+<td><code>app/controllers/estadisticas_controller.py</code></td>
+<td>Filtros de fecha, resumen, ranking y serie diaria.</td>
+</tr>
+<tr>
+<td><code>app/controllers/postventa_controller.py</code></td>
+<td>API de cambios/devoluciones; no tiene una pantalla propia completa.</td>
+</tr>
+<tr>
+<td><code>app/services/__init__.py</code></td>
+<td>Validadores compartidos de texto, dinero, enteros, booleanos y fechas; excepción NoEncontrado.</td>
+</tr>
+<tr>
+<td><code>app/services/productos_service.py</code></td>
+<td>Valida campos y combinaciones de la grilla; coordina el repositorio.</td>
+</tr>
+<tr>
+<td><code>app/services/inventario_service.py</code></td>
+<td>Aplica movimientos, ajusta stock y permite compartir una transacción.</td>
+</tr>
+<tr>
+<td><code>app/services/ventas_service.py</code></td>
+<td>Valida y registra ventas, pagos, stock, reintentos y anulaciones.</td>
+</tr>
+<tr>
+<td><code>app/services/caja_service.py</code></td>
+<td>Reglas de apertura/cierre y cálculo de efectivo esperado y diferencia.</td>
+</tr>
+<tr>
+<td><code>app/services/estadisticas_service.py</code></td>
+<td>Agregados netos de ventas y posventa.</td>
+</tr>
+<tr>
+<td><code>app/services/postventa.py</code></td>
+<td>Valida devoluciones/cambios, límites y diferencias; coordina stock/caja.</td>
+</tr>
+<tr>
+<td><code>app/repositories/productos_repository.py</code></td>
+<td>SQL del catálogo/proveedores, grilla transaccional y SKU consecutivo.</td>
+</tr>
+<tr>
+<td><code>static/js/inicio.js</code></td>
+<td>Eventos, fetch, formularios, imágenes, grilla, carrito, pagos, paginación y gráfico.</td>
+</tr>
+<tr>
+<td><code>static/css/estilos.css</code></td>
+<td>Apariencia y adaptación de la interfaz a distintos tamaños.</td>
+</tr>
+<tr>
+<td><code>static/assets/logo.png</code></td>
+<td>Identidad visual de TechFlow.</td>
+</tr>
+<tr>
+<td><code>static/presentacion/contenido.json</code></td>
+<td>Contenido editable: títulos, diagramas, referencias y notas de las 30 diapositivas.</td>
+</tr>
+<tr>
+<td><code>templates/index.html</code></td>
+<td>Estructura de las pantallas de gestión y enlace a Presentación.</td>
+</tr>
+<tr>
+<td><code>templates/presentacion.html</code></td>
+<td>Visor de diapositivas: teclado, índice, notas, pantalla completa e impresión.</td>
+</tr>
+<tr>
+<td><code>run.py</code></td>
+<td>Arranque de la aplicación principal en el puerto 5000.</td>
+</tr>
+<tr>
+<td><code>run_demo.py</code></td>
+<td>Arranque en el puerto 5001 con techflow_demo.</td>
+</tr>
+<tr>
+<td><code>requirements.txt</code></td>
+<td>Dependencias Python: Flask, conector MySQL, dotenv y Pillow.</td>
+</tr>
+<tr>
+<td><code>package.json</code></td>
+<td>Atajo npm start que ejecuta Python; no implementa backend Node.</td>
+</tr>
+<tr>
+<td><code>.env.example</code></td>
+<td>Ejemplo de configuración de conexión; no proyectar credenciales reales.</td>
+</tr>
+<tr>
+<td><code>.gitignore</code></td>
+<td>Exclusiones de cachés, configuración local e imágenes de usuarios.</td>
+</tr>
+<tr>
+<td><code>sql/techflow.sql</code></td>
+<td>Instalación inicial, 16 tablas, restricciones y datos básicos.</td>
+</tr>
+<tr>
+<td><code>sql/postventa.sql</code></td>
+<td>Migración aditiva; agrega tablas a la base seleccionada, no una base nueva.</td>
+</tr>
+<tr>
+<td><code>sql/techflow_demo.sql</code></td>
+<td>Datos ficticios y esquema para una instalación de demostración.</td>
+</tr>
+<tr>
+<td><code>sql/generar_demo.py</code></td>
+<td>Generador determinista del SQL demo; no conecta con MariaDB.</td>
+</tr>
+<tr>
+<td><code>sql/DEMO.md</code></td>
+<td>Instrucciones y alcance de la base de ejemplo.</td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>Instalación, ejecución y notas generales.</td>
+</tr>
+<tr>
+<td><code>doc/documentacion.md</code></td>
+<td>Documentación general previa; contrastar con el código actual.</td>
+</tr>
+<tr>
+<td><code>docs/guia-exposicion.md</code></td>
+<td>Guía técnica anterior, con explicación detallada de normalización.</td>
+</tr>
+<tr>
+<td><code>docs/casos-uso-techflow.puml</code></td>
+<td>Fuente PlantUML editable de casos de uso.</td>
+</tr>
+<tr>
+<td><code>docs/revision-2026-11-08.md</code></td>
+<td>Registro histórico de revisión y correcciones.</td>
+</tr>
+<tr>
+<td><code>docs/limpieza-2026-11-10.md</code></td>
+<td>Decisiones de limpieza y archivos retirados.</td>
+</tr>
+<tr>
+<td><code>docs/notas.txt</code></td>
+<td>Notas del equipo, conservadas sin atribuirles un contenido no revisado.</td>
+</tr>
+</tbody>
+</table>
+<p><code>instance/imagenes_productos/</code> contiene fotos persistentes, no código. <code>.git/</code> contiene el historial. <code>__pycache__/</code> y <code>.pyc</code> son cachés regenerables. Los modelos sin uso y el servidor Node de ejemplo fueron retirados; no son parte de la arquitectura actual.</p>
+<h2 id="relacion-entre-materias-y-evidencias">Relación entre materias y evidencias</h2>
+<table>
+<thead>
+<tr>
+<th>Materia</th>
+<th>Concepto</th>
+<th>Qué mostrar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Programación</td>
+<td>Interfaz por eventos</td>
+<td>Botones, grilla y funciones de inicio.js</td>
+</tr>
+<tr>
+<td>Programación</td>
+<td>Bibliotecas / framework</td>
+<td>requirements.txt y create_app</td>
+</tr>
+<tr>
+<td>Programación</td>
+<td>Comunicación web</td>
+<td>fetch → ruta Flask → JSON</td>
+</tr>
+<tr>
+<td>Ingeniería</td>
+<td>Caso de uso</td>
+<td>Registrar venta: precondiciones y alternativas</td>
+</tr>
+<tr>
+<td>Ingeniería</td>
+<td>POO</td>
+<td>ProductosService crea ProductosRepository</td>
+</tr>
+<tr>
+<td>Ingeniería</td>
+<td>MVC</td>
+<td>mostrarProducto → controlador → servicio → repositorio</td>
+</tr>
+<tr>
+<td>Base de Datos</td>
+<td>Relacional</td>
+<td>FK entre productos, variantes y detalle_venta</td>
+</tr>
+<tr>
+<td>Base de Datos</td>
+<td>Normalización</td>
+<td>Catálogos separados y excepciones calculadas</td>
+</tr>
+<tr>
+<td>Base de Datos</td>
+<td>Transacciones</td>
+<td>cursor_db, commit y rollback</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ejemplo-sql-para-explicar-sin-modificar-datos">Ejemplo SQL para explicar sin modificar datos</h2>
+<pre><code class="language-sql">SELECT p.nombre, t.nombre AS talle, c.nombre AS color,
+       v.codigo AS sku, v.stock_actual
+FROM variantes v
+JOIN productos p ON p.id = v.producto_id
+JOIN talles t ON t.id = v.talle_id
+JOIN colores c ON c.id = v.color_id
+ORDER BY p.nombre, t.nombre, c.nombre;
+</code></pre>
+<p>Explicar cómo JOIN reúne información sin duplicar nombres en cada tabla. SELECT consulta; INSERT carga; UPDATE modifica. La interfaz desactiva productos para conservar historial en vez de borrar indiscriminadamente.</p>
+<h2 id="respuestas-tecnicas-ampliadas">Respuestas técnicas ampliadas</h2>
+<p><strong>¿Qué forma normal alcanza?</strong> Bajo las reglas actuales, 1FN y 2FN; muchas tablas siguen 3FN, pero no el esquema entero. Revisar claves candidatas, no solo IDs. Subtotal y diferencia de caja son contraejemplos de dependencias entre atributos no clave. El precio histórico es un hecho distinto del precio actual y debe conservarse.</p>
+<p><strong>¿Qué es MVC?</strong> Separación entre presentación, recepción/coordinación de solicitudes y reglas/persistencia. El Modelo no se limita a MariaDB. La implementación es por capas, con servicios y repositorio; algunos servicios contienen SQL y proveedores valida desde el controlador.</p>
+<p><strong>¿Qué es POO?</strong> Organizar comportamiento y estado mediante objetos. Aquí se observan clases, instancias, métodos, colaboración y herencia de excepciones. No se utiliza un modelo de dominio rico ni polimorfismo de negocio desarrollado. Los atributos son públicos; encapsulación de responsabilidades no equivale a privacidad estricta.</p>
+<p><strong>¿Por qué Flask y no todos los frameworks vistos?</strong> Elegimos una solución coherente con Python y una interfaz web sencilla. Tkinter, PHP, React, Vite y Node son conceptos estudiados comparables, no dependencias del producto actual. React es biblioteca, Vite herramienta y Node entorno de ejecución.</p>
+<p><strong>¿Cómo se evita duplicar ventas?</strong> Identificador de solicitud y contenido asociado, transacción y recuperación del resultado en un reintento compatible. El navegador conserva el cobro pendiente; no genera otra venta por perder una respuesta.</p>
+<p><strong>¿Qué pasa con simultaneidad?</strong> Bloqueo de escritura por base y transacciones; esto reduce conflictos a costa de serializar escrituras. No afirmar escalabilidad ilimitada.</p>
+<p><strong>¿Qué no está terminado?</strong> Pantalla de posventa, autenticación/roles, paginación en el servidor y una separación uniforme de capas. La paginación visual actual descarga todos los resultados y muestra 20 por página.</p>
+<h2 id="diagramas-editables">Diagramas editables</h2>
+<p>Las fuentes SVG se incluyen en <code>docs/diagramas/</code>; pueden insertarse en un documento, imprimirse o abrirse en el navegador. La fuente PlantUML completa de casos de uso está en <code>docs/casos-uso-techflow.puml</code>. El contenido de las diapositivas se edita en <code>static/presentacion/contenido.json</code>; los diagramas son SVG, no capturas rasterizadas.</p><h2>Diagramas para estudiar</h2><h3>Casos de uso</h3><svg class="diagram" viewBox="0 0 1100 470" role="img" aria-label="Operador y ocho casos de uso de TechFlow" xmlns="http://www.w3.org/2000/svg"><style>.svgtitle{font:700 20px Arial;fill:#172554}.svgtext{font:18px Arial;fill:#334155}</style><defs><marker id="arrow4" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="none" stroke="#2563eb"/></marker></defs><rect x="260" y="15" width="810" height="430" rx="5" fill="none" stroke="#94a3b8"/><text x="285" y="45" class="svgtitle">TechFlow</text><circle cx="110" cy="160" r="22" fill="none" stroke="#172554" stroke-width="3"/><path d="M110 182V257 M65 210H155 M110 257L76 303 M110 257L144 303" stroke="#172554" stroke-width="3" fill="none"/><text x="110" y="340" text-anchor="middle" class="svgtitle">Operador</text><path d="M155 210 L297 100" stroke="#a5b4cf" fill="none"/><ellipse cx="455" cy="100" rx="158" ry="34" fill="#eff6ff" stroke="#2563eb"/><text x="455" y="106" text-anchor="middle" class="svgtext">Gestionar productos</text><path d="M155 210 L297 195" stroke="#a5b4cf" fill="none"/><ellipse cx="455" cy="195" rx="158" ry="34" fill="#eff6ff" stroke="#2563eb"/><text x="455" y="201" text-anchor="middle" class="svgtext">Gestionar inventario</text><path d="M155 210 L297 290" stroke="#a5b4cf" fill="none"/><ellipse cx="455" cy="290" rx="158" ry="34" fill="#eff6ff" stroke="#2563eb"/><text x="455" y="296" text-anchor="middle" class="svgtext">Registrar venta</text><path d="M155 210 L297 385" stroke="#a5b4cf" fill="none"/><ellipse cx="455" cy="385" rx="158" ry="34" fill="#eff6ff" stroke="#2563eb"/><text x="455" y="391" text-anchor="middle" class="svgtext">Consultar historial</text><path d="M155 210 L692 100" stroke="#a5b4cf" fill="none"/><ellipse cx="850" cy="100" rx="158" ry="34" fill="#eff6ff" stroke="#2563eb"/><text x="850" y="106" text-anchor="middle" class="svgtext">Abrir / cerrar caja</text><path d="M155 210 L692 195" stroke="#a5b4cf" fill="none"/><ellipse cx="850" cy="195" rx="158" ry="34" fill="#eff6ff" stroke="#2563eb"/><text x="850" y="201" text-anchor="middle" class="svgtext">Consultar estadísticas</text><path d="M155 210 L692 290" stroke="#a5b4cf" fill="none"/><ellipse cx="850" cy="290" rx="158" ry="34" fill="#fff7ed" stroke="#2563eb"/><text x="850" y="296" text-anchor="middle" class="svgtext">Anular venta</text><path d="M155 210 L692 385" stroke="#a5b4cf" fill="none"/><ellipse cx="850" cy="385" rx="158" ry="34" fill="#fff7ed" stroke="#2563eb"/><text x="850" y="391" text-anchor="middle" class="svgtext">Cambio / devolución</text></svg><h3>MVC</h3><svg class="diagram" viewBox="0 0 1100 470" role="img" aria-label="Recorrido MVC desde la vista hasta MariaDB" xmlns="http://www.w3.org/2000/svg"><style>.svgtitle{font:700 20px Arial;fill:#172554}.svgtext{font:18px Arial;fill:#334155}</style><defs><marker id="arrow8" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="none" stroke="#2563eb"/></marker></defs><rect x="20" y="60" width="240" height="155" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="36" y="90" class="svgtitle">Vista</text><text x="36" y="120" class="svgtext">index.html</text><text x="36" y="145" class="svgtext">estilos.css / inicio.js</text><text x="36" y="170" class="svgtext">Interacción y presentación</text><rect x="310" y="60" width="240" height="155" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="326" y="90" class="svgtitle">Controlador</text><text x="326" y="120" class="svgtext">productos_controller.py</text><text x="326" y="145" class="svgtext">Recibe JSON</text><text x="326" y="170" class="svgtext">Devuelve HTTP / JSON</text><rect x="600" y="60" width="230" height="155" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="616" y="90" class="svgtitle">Servicio</text><text x="616" y="120" class="svgtext">ProductosService</text><text x="616" y="145" class="svgtext">Valida reglas</text><text x="616" y="170" class="svgtext">Coordina operaciones</text><rect x="600" y="290" width="230" height="135" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="616" y="320" class="svgtitle">Repositorio</text><text x="616" y="350" class="svgtext">ProductosRepository</text><text x="616" y="375" class="svgtext">Consultas SQL</text><rect x="20" y="290" width="330" height="135" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="36" y="320" class="svgtitle">MariaDB</text><text x="36" y="350" class="svgtext">Datos relacionados</text><text x="36" y="375" class="svgtext">Restricciones y transacciones</text><path d="M260,135 L310,135" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow8)"/><path d="M550,135 L600,135" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow8)"/><path d="M715,215 L715,290" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow8)"/><path d="M600,355 L350,355" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow8)"/></svg><h3>Clases UML</h3><svg class="diagram" viewBox="0 0 1100 470" role="img" aria-label="Clases de servicios, repositorio y herencia de excepciones" xmlns="http://www.w3.org/2000/svg"><style>.svgtitle{font:700 20px Arial;fill:#172554}.svgtext{font:18px Arial;fill:#334155}</style><defs><marker id="arrow12" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="none" stroke="#2563eb"/></marker></defs><rect x="20" y="25" width="330" height="160" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="36" y="55" class="svgtitle">ProductosService</text><text x="36" y="85" class="svgtext">+ repo: ProductosRepository</text><text x="36" y="110" class="svgtext">+ listar(...)</text><text x="36" y="135" class="svgtext">+ crear_con_variantes(data)</text><rect x="20" y="285" width="330" height="150" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="36" y="315" class="svgtitle">ProductosRepository</text><text x="36" y="345" class="svgtext">+ listar_productos(...)</text><text x="36" y="370" class="svgtext">+ crear_con_variantes(...)</text><text x="36" y="395" class="svgtext">+ modificar_producto(...)</text><path d="M185,185 L185,285" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow12)"/><text x="185.0" y="225.0" text-anchor="middle" class="svgtext">usa</text><rect x="415" y="25" width="310" height="160" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="431" y="55" class="svgtitle">PostventaService</text><text x="431" y="85" class="svgtext">+ inventario_service</text><text x="431" y="110" class="svgtext">+ registrar_operacion(data)</text><rect x="415" y="285" width="310" height="150" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="431" y="315" class="svgtitle">InventarioService</text><text x="431" y="345" class="svgtext">+ listar(...)</text><text x="431" y="370" class="svgtext">+ movimiento(...)</text><path d="M570,185 L570,285" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow12)"/><text x="570.0" y="225.0" text-anchor="middle" class="svgtext">usa</text><rect x="790" y="25" width="280" height="100" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="806" y="55" class="svgtitle">ValueError</text><rect x="790" y="285" width="280" height="150" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="806" y="315" class="svgtitle">VentaError</text><text x="806" y="345" class="svgtext">Subclase de ValueError</text><path d="M930 285V145" fill="none" stroke="#2563eb" stroke-width="2"/><path d="M930 125L918 145H942Z" fill="white" stroke="#2563eb" stroke-width="2"/></svg><h3>Relaciones de la base</h3><svg class="diagram" viewBox="0 0 1100 470" role="img" aria-label="Relaciones entre categorías, productos, variantes, ventas, detalles y pagos" xmlns="http://www.w3.org/2000/svg"><style>.svgtitle{font:700 20px Arial;fill:#172554}.svgtext{font:18px Arial;fill:#334155}</style><defs><marker id="arrow14" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="none" stroke="#2563eb"/></marker></defs><rect x="15" y="30" width="225" height="100" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="31" y="60" class="svgtitle">categorias</text><text x="31" y="90" class="svgtext">id PK · nombre UNIQUE</text><rect x="320" y="30" width="290" height="125" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="336" y="60" class="svgtitle">productos</text><text x="336" y="90" class="svgtext">id PK · categoria_id FK</text><text x="336" y="115" class="svgtext">nombre · precio</text><rect x="735" y="30" width="340" height="125" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="751" y="60" class="svgtitle">variantes</text><text x="751" y="90" class="svgtext">id PK · producto_id FK</text><text x="751" y="115" class="svgtext">talle_id FK · color_id FK</text><text x="751" y="140" class="svgtext">codigo UNIQUE · stock</text><path d="M240,80 L320,80" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow14)"/><text x="280.0" y="70.0" text-anchor="middle" class="svgtext">1 → N</text><path d="M610,80 L735,80" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow14)"/><text x="672.5" y="70.0" text-anchor="middle" class="svgtext">1 → N</text><rect x="735" y="295" width="340" height="130" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="751" y="325" class="svgtitle">detalle_venta</text><text x="751" y="355" class="svgtext">id PK · venta_id FK</text><text x="751" y="380" class="svgtext">variante_id FK · cantidad</text><text x="751" y="405" class="svgtext">precio_unitario · subtotal</text><rect x="320" y="295" width="290" height="130" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="336" y="325" class="svgtitle">ventas</text><text x="336" y="355" class="svgtext">id PK · caja_id FK</text><text x="336" y="380" class="svgtext">fecha · total · estado</text><path d="M905,155 L905,295" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow14)"/><text x="905.0" y="215.0" text-anchor="middle" class="svgtext">1 → N</text><path d="M610,350 L735,350" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow14)"/><text x="672.5" y="340.0" text-anchor="middle" class="svgtext">1 → N</text><rect x="15" y="295" width="225" height="100" rx="6" fill="#f1f5ff" stroke="#2563eb"/><text x="31" y="325" class="svgtitle">pagos_venta</text><text x="31" y="355" class="svgtext">id PK · venta_id FK</text><text x="31" y="380" class="svgtext">medio · importe</text><path d="M320,345 L240,345" stroke="#2563eb" fill="none" stroke-width="2" marker-end="url(#arrow14)"/><text x="280.0" y="335.0" text-anchor="middle" class="svgtext">1 → N</text></svg></html>
+<h2>Anexo: herramientas y conceptos vistos en clase</h2>
+<p>Las materias brindaron herramientas para elegir una solución. Conocer una herramienta no obliga a incluirla como dependencia de la aplicación.</p>
+<p>Este anexo es de consulta: puede resumirse durante la exposición o abrirse ante preguntas.</p>
+<h3>Python: análisis e interfaces</h3>
+<p><strong>pandas.</strong> Organiza, filtra y resume datos en tablas. <strong>En TechFlow:</strong> No se usa; los informes se consultan con SQL.</p>
+<p><strong>matplotlib.</strong> Genera gráficos a partir de datos en Python. <strong>En TechFlow:</strong> No se usa; el gráfico web se dibuja con SVG.</p>
+<p><strong>Tkinter + base de datos.</strong> Crea ventanas de escritorio; sus eventos pueden llamar a un conector SQL. <strong>En TechFlow:</strong> No se usa; elegimos una interfaz en el navegador.</p>
+<h3>JavaScript e interfaz web</h3>
+<p><strong>HTML, CSS y Flexbox.</strong> HTML estructura; CSS define la apariencia; Flexbox distribuye elementos en una fila o columna. <strong>En TechFlow:</strong> Se usan en la interfaz web.</p>
+<p><strong>Variables, tipos y funciones.</strong> Guardan datos y organizan lógica con condiciones, ciclos y funciones, incluidas las flecha. <strong>En TechFlow:</strong> Sostienen filtros, formularios y cálculos.</p>
+<p><strong>Objetos y listas.</strong> Agrupan datos; copiar, fusionar y desestructurar facilita transformar objetos y arreglos. <strong>En TechFlow:</strong> Se manejan productos, variantes y carrito.</p>
+<p><strong>DOM, eventos y JSON.</strong> El DOM representa la página; los eventos reaccionan a acciones; JSON intercambia datos. <strong>En TechFlow:</strong> JavaScript actualiza la pantalla y conversa con la API.</p>
+<h3>Servidores y componentes</h3>
+<p><strong>Node.js + Express.</strong> Node ejecuta JavaScript fuera del navegador; Express organiza rutas, respuestas y archivos estáticos. <strong>En TechFlow:</strong> No son el servidor de TechFlow: usamos Flask.</p>
+<p><strong>CRUD y MVC en Node.</strong> CRUD crea, consulta, modifica y elimina; MVC separa responsabilidades. <strong>En TechFlow:</strong> Aplicamos esos conceptos con Python y Flask.</p>
+<p><strong>Asincronismo.</strong> Promesas y async/await permiten esperar operaciones sin bloquear la interacción. <strong>En TechFlow:</strong> Se usan al consultar y guardar mediante la API.</p>
+<p><strong>React + Vite.</strong> React compone interfaces con props y hooks; Vite prepara el entorno de desarrollo y la compilación. <strong>En TechFlow:</strong> No se usan; la interfaz utiliza JavaScript directo.</p>
+<h3>Herramientas y abstracciones de datos</h3>
+<p><strong>MySQL Server y Workbench.</strong> Server administra datos; Workbench permite modelar un DER y ejecutar SQL para crear el esquema. <strong>En TechFlow:</strong> TechFlow utiliza MariaDB de XAMPP; Workbench no es necesario para ejecutarlo.</p>
+<p><strong>ORM en Python o JavaScript.</strong> Relaciona objetos con tablas y traduce operaciones a consultas. <strong>En TechFlow:</strong> No se usa un ORM: se ejecuta SQL mediante un conector.</p>
+<p><strong>Vistas SQL.</strong> Son consultas guardadas que se consultan como tablas; pueden simplificar el acceso entre capas. <strong>En TechFlow:</strong> El esquema actual no define vistas SQL. No son las vistas de MVC.</p>
+<p><strong>Rendimiento y estrategia.</strong> Claves, índices y planes de consulta ayudan a evaluar búsquedas, relaciones y costos. <strong>En TechFlow:</strong> Hay claves e índices; no se afirma una optimización exhaustiva.</p>
+<h3>Diseño, objetos y relaciones</h3>
+<p><strong>Diseño y arquitectura.</strong> Definen responsabilidades y cómo colaboran los componentes. <strong>En TechFlow:</strong> La presentación muestra capas, MVC y el recorrido de una solicitud.</p>
+<p><strong>Abstracción y encapsulamiento.</strong> Exponen operaciones y agrupan estado y comportamiento detrás de responsabilidades. <strong>En TechFlow:</strong> Se observan en servicios y repositorios; no implican atributos privados.</p>
+<p><strong>Herencia y polimorfismo.</strong> La herencia especializa tipos; el polimorfismo permite distintas respuestas a una misma operación. <strong>En TechFlow:</strong> Hay herencia de excepciones; no un polimorfismo de negocio desarrollado.</p>
+<p><strong>POO en JavaScript.</strong> Permite organizar comportamiento con objetos, prototipos y clases. <strong>En TechFlow:</strong> La POO del proyecto se explica principalmente con clases Python.</p>
+<h3>Relaciones UML y normalización</h3>
+<p><strong>Asociación, agregación y composición.</strong> Asociación: vínculo; agregación: todo-parte independiente; composición: propiedad y ciclo de vida ligado. <strong>En TechFlow:</strong> Son herramientas de modelado; no se deducen solo de una clave foránea.</p>
+<p><strong>Interfaz y realización.</strong> Una interfaz define un contrato; la realización expresa que una clase lo implementa. <strong>En TechFlow:</strong> No se presentan como relaciones explícitas implementadas en TechFlow.</p>
+<p><strong>Casos de uso, UML y DER.</strong> Casos de uso describen objetivos; UML modela software; un DER representa entidades y relaciones de datos. <strong>En TechFlow:</strong> Se incluyen los diagramas del proyecto y sus alcances.</p>
+<p><strong>Normalización.</strong> Revisa dependencias para reducir redundancia y anomalías; las formas superiores exigen condiciones adicionales. <strong>En TechFlow:</strong> Se analiza hasta 3FN con excepciones; no se afirma que todo el esquema cumpla 3FN.</p>

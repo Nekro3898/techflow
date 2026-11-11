@@ -1,5 +1,20 @@
 # TechFlow Solutions
 
+## Presentación del trabajo final
+
+En el menú de la aplicación, abrir **Presentación** (ruta `/presentacion`).
+Incluye 30 diapositivas, índice, notas del expositor, diagramas ampliables e impresión.
+La descarga HTML funciona sin Flask ni conexión a la base. Material de respaldo:
+
+- `docs/TechFlow-presentacion.html`: diapositivas autónomas.
+- `docs/guia-defensa-final.html`: guía visual imprimible con diagramas y guion.
+- `docs/guia-defensa-final.md`: versión de texto editable.
+- `docs/diagramas/`: cuatro fuentes SVG editables.
+
+El contenido de la presentación se edita en `static/presentacion/contenido.json`;
+el diseño y la navegación, en `templates/presentacion.html`. Después de editar,
+usar **Descargar HTML** para obtener una copia autónoma actualizada.
+
 Sistema académico de gestión de una tienda de ropa, desarrollado con Flask,
 MySQL/MariaDB y una interfaz HTML, CSS y JavaScript.
 
